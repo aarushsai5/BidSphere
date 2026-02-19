@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Login</h1>
+<form action="" method="post" style="width: 300px; display: flex; flex-direction: column; gap: 15px;">
+    <div>
+        <label for="username" style="display: block; margin-bottom: 5px;">Username</label>
+        <input type="text" id="username" name="username" style="width: 100%; padding: 8px; border: 1px solid #ddd;">
+    </div>
+    <div>
+        <label for="password" style="display: block; margin-bottom: 5px;">Password</label>
+        <input type="password" id="password" name="password" style="width: 100%; padding: 8px; border: 1px solid #ddd;">
+    </div>
+    <button type="submit" class="bid-btn">Login</button>
+</form>
+{% endblock %}

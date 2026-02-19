@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BidSphere - Auction Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Embedding crucial basic resets just in case external css fails to load for any reason,
+           but primary styling will be in style.css */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">BidSphere</div>
+        <nav>
+            <a href="#">Home</a>
+            <a href="#">Login</a>
+            <a href="#">Register</a>
+        </nav>
+    </header>
+
+    <main>
+        <h1>Live Auctions</h1>
+
+        <div class="auction-card">
+            <img src="https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+                alt="Vintage Watch" class="item-image">
+            <div class="card-details">
+                <h2>Vintage Watch</h2>
+                <div class="bid-info">
+                    <span class="label">Current Bid:</span>
+                    <span class="value">₹5,000</span>
+                </div>
+                <div class="timer">
+                    00:10:00
+                </div>
+                <button class="bid-btn">Place Bid</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2026 BidSphere
+    </footer>
+
+</body>
+
+</html>

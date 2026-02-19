@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BidSphere - Auction Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Embedding crucial basic resets just in case external css fails to load for any reason,
+           but primary styling will be in style.css */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">BidSphere</div>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('register') }}">Register</a>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        &copy; 2026 BidSphere
+    </footer>
+
+</body>
+
+</html>
