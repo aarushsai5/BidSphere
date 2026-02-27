@@ -62,6 +62,24 @@
     color-scheme: dark;
 }
 
+[data-theme="dark"] .form-card,
+[data-theme="dark"] .form-card h1,
+[data-theme="dark"] .form-card h2,
+[data-theme="dark"] .form-card label,
+[data-theme="dark"] .auth-title,
+[data-theme="dark"] .auth-subtitle,
+[data-theme="dark"] .hero h1,
+[data-theme="dark"] .hero p,
+[data-theme="dark"] .card-info.card-price .label,
+[data-theme="dark"] .card-info.card-bids .label {
+    color: var(--gray-100) !important;
+}
+
+[data-theme="dark"] .form-card {
+    background: var(--gray-800);
+    border-color: var(--gray-700);
+}
+
 [data-theme="dark"] .input {
     background: var(--gray-800) !important;
     color: var(--gray-50) !important;
