@@ -91,8 +91,23 @@
     border-color: var(--gray-700);
 }
 
-[data-theme="dark"] .auth-split-layout {
+[data-theme="dark"] .auth-split-layout,
+[data-theme="dark"] .auth-form-side {
     background: var(--gray-900);
+}
+
+[data-theme="dark"] .footer {
+    background: var(--gray-900);
+    border-color: var(--gray-800);
+}
+
+[data-theme="dark"] .footer-title,
+[data-theme="dark"] .footer-subtitle,
+[data-theme="dark"] .footer-description,
+[data-theme="dark"] .footer-link,
+[data-theme="dark"] .section-subtitle,
+[data-theme="dark"] .stat-label {
+    color: var(--gray-100) !important;
 }
 
 [data-theme="dark"] .auth-form-container,
