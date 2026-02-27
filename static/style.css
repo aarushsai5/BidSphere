@@ -71,13 +71,33 @@
 [data-theme="dark"] .hero h1,
 [data-theme="dark"] .hero p,
 [data-theme="dark"] .card-info.card-price .label,
-[data-theme="dark"] .card-info.card-bids .label {
+[data-theme="dark"] .card-info.card-bids .label,
+[data-theme="dark"] .card-title,
+[data-theme="dark"] .category-name,
+[data-theme="dark"] .step-box h3,
+[data-theme="dark"] .step-box p,
+[data-theme="dark"] .card-seller {
     color: var(--gray-100) !important;
 }
 
 [data-theme="dark"] .form-card {
     background: var(--gray-800);
     border-color: var(--gray-700);
+}
+
+[data-theme="dark"] .auction-card,
+[data-theme="dark"] .category-card {
+    background: var(--gray-800);
+    border-color: var(--gray-700);
+}
+
+[data-theme="dark"] .auth-split-layout {
+    background: var(--gray-900);
+}
+
+[data-theme="dark"] .auth-form-container,
+[data-theme="dark"] .form-group label {
+    color: var(--gray-100);
 }
 
 [data-theme="dark"] .input {
