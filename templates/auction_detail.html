@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}{{ auction.title }} — Art&Auction{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 40px 24px; max-width: 1000px;" data-aos="fade-up">
+
+    <!-- Back Link -->
+    <a href="{{ url_for('index') }}"
+        style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--gray-500); margin-bottom: 24px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to listings
+    </a>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 60px;">
+        <!-- Left Column: Image -->
+        <div
+            style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--gray-200); background: var(--gray-50); display: flex; align-items: center; justify-content: center; min-height: 400px; position: relative;">
+            <span class="status-badge status-{{ auction.status }}">{{ auction.status | capitalize }}</span>
+            {% if auction.image %}
+            <img src="{{ url_for('static', filename='images/' + auction.image) }}" alt="{{ auction.title }}"
+                style="width: 100%; height: 100%; object-fit: contain;">
+            {% else %}
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" class="feather feather-image"
+                stroke="var(--gray-300)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            {% endif %}
+        </div>
+
+        <!-- Right Column: Details & Bidding -->
+        <div>
+            <h1 class="card-title" style="font-size: 2.2rem; margin-bottom: 8px;">{{ auction.title }}</h1>
+            <p style="color: var(--gray-500); margin-bottom: 24px;">Listed by <span
+                    style="font-weight: 700; color: var(--secondary);">{{ auction.seller_name }}</span></p>
+
+            <div
+                style="background: var(--gray-50); padding: 24px; border-radius: var(--radius); border: 1px solid var(--gray-200); margin-bottom: 32px;">
+                <div
+                    style="font-size: 0.9rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; margin-bottom: 8px;">
+                    Current Highest Bid</div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 8px;">₹{{
+                    "%.2f" | format(current_bid) }}</div>
+                <div style="font-size: 0.9rem; color: var(--gray-500);">
+                    Starting Price: ₹{{ "%.2f" | format(auction.starting_price) }} • Min Increment: ₹{{ "%.2f" |
+                    format(auction.min_increment) }}
+                </div>
+            </div>
+
+            {% if auction.status == 'live' %}
+            {% if not current_user %}
+            <div class="alert alert-warning"
+                style="background: rgba(245, 158, 11, 0.1); color: #b45309; border-color: rgba(245, 158, 11, 0.2);">
+                You must <a href="{{ url_for('login') }}" style="font-weight: 700; text-decoration: underline;">sign
+                    in</a> to place a bid.
+            </div>
+            {% elif current_user.role == 'seller' %}
+            <div class="alert alert-info">Sellers cannot place bids.</div>
+            {% else %}
+            <form action="{{ url_for('place_bid', auction_id=auction.id) }}" method="POST" style="margin-bottom: 30px;">
+                <label for="amount" class="form-label">Your Maximum Bid (₹)</label>
+                <div style="display: flex; gap: 12px;">
+                    <input type="number" name="amount" id="amount" class="input" step="{{ auction.min_increment }}"
+                        min="{{ current_bid + auction.min_increment }}"
+                        value="{{ current_bid + auction.min_increment }}" required
+                        style="font-size: 1.2rem; font-weight: 700;">
+                    <button type="submit" class="btn btn-primary"
+                        style="padding: 12px 32px; font-size: 1.1rem; flex-shrink: 0;">Place Bid</button>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--gray-500); margin-top: 8px;">Enter at least ₹{{ "%.2f" |
+                    format(current_bid + auction.min_increment) }}</p>
+            </form>
+            {% endif %}
+            {% else %}
+            <div class="alert" style="background: var(--gray-200); font-weight: 700;">This auction is currently {{
+                auction.status }}.</div>
+            {% endif %}
+
+            <div style="margin-top: 40px;">
+                <h3 class="section-header" style="font-size: 1.2rem; margin-bottom: 16px;">Description</h3>
+                <div style="line-height: 1.8; color: var(--gray-700); white-space: pre-wrap;">{{ auction.description }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bidding History -->
+    <div>
+        <h3 class="section-header"
+            style="font-size: 1.5rem; border-bottom: 2px solid var(--gray-200); padding-bottom: 16px; margin-bottom: 24px;">
+            Bid History <span style="color: var(--gray-400); font-weight: 500;">({{ bids | length }})</span></h3>
+
+        {% if bids %}
+        <div
+            style="background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); overflow: hidden;">
+            {% for bid in bids %}
+            <div
+                style="display: flex; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--gray-100); {% if loop.first %}background: rgba(16, 185, 129, 0.05);{% endif %}">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div
+                        style="width: 40px; height: 40px; border-radius: 50%; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--gray-500);">
+                        {{ bid.bidder_name[0] | upper }}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; color: var(--gray-900);">{{ bid.bidder_name }}</div>
+                        <div style="font-size: 0.8rem; color: var(--gray-500);">{{ bid.created_at }}</div>
+                    </div>
+                </div>
+                <div
+                    style="font-size: 1.2rem; font-weight: 800; color: {% if loop.first %}var(--success){% else %}var(--gray-900){% endif %};">
+                    ₹{{ "%.2f" | format(bid.amount) }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p
+            style="color: var(--gray-500); font-style: italic; background: var(--gray-50); padding: 32px; border-radius: var(--radius); text-align: center;">
+            No bids have been placed yet. Be the first!</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

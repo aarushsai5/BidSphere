@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}Admin Panel — Art&Auction{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 80px;" data-aos="fade-up">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px;">
+        <div>
+            <h1 style="font-size: 2.4rem; font-weight: 800; color: var(--secondary);">Admin Control Panel</h1>
+            <p style="color: var(--gray-500); font-size: 1.1rem; margin-top: 8px;">
+                Platform overview and management for <span style="font-weight: 700; color: var(--primary-dark);">{{
+                    current_user.username }}</span>.
+            </p>
+        </div>
+        <div
+            style="background: rgba(245, 158, 11, 0.1); color: var(--primary-dark); padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; border: 1px solid rgba(245, 158, 11, 0.2);">
+            Administrator Access
+        </div>
+    </div>
+
+    <!-- Platform Statistics -->
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 40px;">
+        <div style="background: var(--white); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); transition: transform 0.3s;"
+            onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='none'">
+            <div
+                style="color: var(--gray-500); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px;">
+                Total Users Registered</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--primary);">{{ stats.total_users }}</div>
+        </div>
+        <div style="background: var(--white); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); transition: transform 0.3s;"
+            onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='none'">
+            <div
+                style="color: var(--gray-500); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px;">
+                Total Listings Created</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--secondary);">{{ stats.total_auctions }}</div>
+        </div>
+        <div style="background: var(--white); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); transition: transform 0.3s;"
+            onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='none'">
+            <div
+                style="color: var(--gray-500); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px;">
+                Active Live Auctions</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--success);">{{ stats.active_auctions }}</div>
+        </div>
+        <div style="background: var(--white); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); transition: transform 0.3s;"
+            onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='none'">
+            <div
+                style="color: var(--gray-500); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px;">
+                Total Bids Placed</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--gray-900);">{{ stats.total_bids }}</div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 40px;">
+
+        <!-- All Listings Section -->
+        <div
+            style="background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); overflow: hidden; box-shadow: var(--shadow-sm);">
+            <div style="padding: 24px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50);">
+                <h2 style="font-size: 1.4rem; font-weight: 700; margin: 0; color: var(--gray-900);">Platform Listings
+                </h2>
+            </div>
+
+            <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead style="position: sticky; top: 0; background: var(--white); z-index: 1;">
+                        <tr
+                            style="border-bottom: 2px solid var(--gray-200); color: var(--gray-500); font-size: 0.85rem; text-transform: uppercase;">
+                            <th style="padding: 16px 24px; font-weight: 700;">Title</th>
+                            <th style="padding: 16px 24px; font-weight: 700;">Seller</th>
+                            <th style="padding: 16px 24px; font-weight: 700;">Status</th>
+                            <th style="padding: 16px 24px; font-weight: 700;">Bids (Max)</th>
+                            <th style="padding: 16px 24px; font-weight: 700;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for auction in auctions %}
+                        <tr style="border-bottom: 1px solid var(--gray-100); transition: background 0.2s;">
+                            <td style="padding: 16px 24px;">
+                                <div style="font-weight: 700; color: var(--gray-900);">{{ auction.title }}</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-500);">ID: {{ auction.id }}</div>
+                            </td>
+                            <td style="padding: 16px 24px; color: var(--gray-700);">{{ auction.seller_name }}</td>
+                            <td style="padding: 16px 24px;">
+                                <span class="status-badge status-{{ auction.status }}"
+                                    style="position: static; font-size: 0.75rem;">{{ auction.status | capitalize
+                                    }}</span>
+                            </td>
+                            <td style="padding: 16px 24px; font-weight: 600; color: var(--gray-900);">
+                                {{ auction.bid_count }} (₹{{ "%.2f" | format(auction.highest_bid if auction.highest_bid
+                                else 0) }})
+                            </td>
+                            <td style="padding: 16px 24px; display: flex; gap: 8px;">
+                                <a href="{{ url_for('auction_detail', auction_id=auction.id) }}" class="btn btn-outline"
+                                    style="padding: 6px 12px; font-size: 0.85rem;">View</a>
+                                <form action="{{ url_for('admin_delete_auction', auction_id=auction.id) }}"
+                                    method="POST" style="margin: 0;"
+                                    onsubmit="return confirm('Are you sure you want to delete this auction? This action cannot be undone.');">
+                                    <button type="submit" class="btn"
+                                        style="padding: 6px 12px; font-size: 0.85rem; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- User Management Section -->
+        <div
+            style="background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); overflow: hidden; box-shadow: var(--shadow-sm);">
+            <div style="padding: 24px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50);">
+                <h2 style="font-size: 1.4rem; font-weight: 700; margin: 0; color: var(--gray-900);">Registered Users
+                </h2>
+            </div>
+
+            <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead style="position: sticky; top: 0; background: var(--white); z-index: 1;">
+                        <tr
+                            style="border-bottom: 2px solid var(--gray-200); color: var(--gray-500); font-size: 0.85rem; text-transform: uppercase;">
+                            <th style="padding: 16px 24px; font-weight: 700;">User Info</th>
+                            <th style="padding: 16px 24px; font-weight: 700;">Role</th>
+                            <th style="padding: 16px 24px; font-weight: 700;">Status</th>
+                            <th style="padding: 16px 24px; font-weight: 700;">Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr style="border-bottom: 1px solid var(--gray-100);">
+                            <td style="padding: 16px 24px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div
+                                        style="width: 36px; height: 36px; border-radius: 50%; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; color: var(--gray-600);">
+                                        {{ u.username[0] | upper }}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--gray-900);">{{ u.username }}</div>
+                                        <div style="font-size: 0.8rem; color: var(--gray-500);">{{ u.email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="padding: 16px 24px;">
+                                <span
+                                    style="background: var(--gray-100); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; color: var(--gray-700);">
+                                    {{ u.role | capitalize }}
+                                </span>
+                            </td>
+                            <td style="padding: 16px 24px;">
+                                {% if u.is_banned %}
+                                <span style="color: var(--danger); font-weight: 600; font-size: 0.9rem;">Banned</span>
+                                {% else %}
+                                <span style="color: var(--success); font-weight: 600; font-size: 0.9rem;">Active</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 16px 24px; font-size: 0.85rem; color: var(--gray-600);">
+                                {{ u.created_at.split(' ')[0] if u.created_at else 'N/A' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

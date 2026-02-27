@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}My Dashboard — Art&Auction{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 80px;" data-aos="fade-up">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px;">
+        <div>
+            <h1 style="font-size: 2.4rem; font-weight: 800; color: var(--secondary);">My Dashboard</h1>
+            <p style="color: var(--gray-500); font-size: 1.1rem; margin-top: 8px;">
+                Welcome back, <span style="font-weight: 700; color: var(--primary-dark);">{{ current_user.username
+                    }}</span>.
+                Here's an overview of your activity.
+            </p>
+        </div>
+        {% if current_user.role in ('seller', 'admin') %}
+        <a href="{{ url_for('create_auction') }}" class="btn btn-primary"
+            style="padding: 12px 24px; font-size: 1.05rem;">
+            + List New Item
+        </a>
+        {% else %}
+        <a href="{{ url_for('index') }}" class="btn btn-primary" style="padding: 12px 24px; font-size: 1.05rem;">
+            Find Auctions
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Stats Row (Simplified) -->
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 40px;">
+        <div
+            style="background: var(--white); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);">
+            <div
+                style="color: var(--gray-500); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px;">
+                Total Active</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--gray-900);">{{ auctions | length }}</div>
+        </div>
+    </div>
+
+    <!-- Activity Section -->
+    <div
+        style="background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); overflow: hidden; box-shadow: var(--shadow-sm);">
+        <div style="padding: 24px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50);">
+            <h2 style="font-size: 1.4rem; font-weight: 700; margin: 0; color: var(--gray-900);">
+                {% if current_user.role in ('seller', 'admin') %} My Listings {% else %} My Active Bids {% endif %}
+            </h2>
+        </div>
+
+        {% if not auctions %}
+        <div style="padding: 80px 24px; text-align: center;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <h3 style="font-size: 1.2rem; font-weight: 600; color: var(--gray-900); margin-bottom: 8px;">No Activity Yet
+            </h3>
+            <p style="color: var(--gray-500);">
+                {% if current_user.role in ('seller', 'admin') %}
+                You haven't listed any auctions. Start selling to see your listings here.
+                {% else %}
+                You haven't placed any bids. Discover live auctions to get started.
+                {% endif %}
+            </p>
+        </div>
+        {% else %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr
+                        style="border-bottom: 2px solid var(--gray-200); color: var(--gray-500); font-size: 0.85rem; text-transform: uppercase;">
+                        <th style="padding: 16px 24px; font-weight: 700;">Item / Title</th>
+                        <th style="padding: 16px 24px; font-weight: 700;">Status</th>
+
+                        {% if current_user.role in ('seller', 'admin') %}
+                        <!-- Seller Columns -->
+                        <th style="padding: 16px 24px; font-weight: 700;">Starting Price</th>
+                        <th style="padding: 16px 24px; font-weight: 700;">Highest Bid</th>
+                        <th style="padding: 16px 24px; font-weight: 700;">Total Bids</th>
+                        {% else %}
+                        <!-- Bidder Columns -->
+                        <th style="padding: 16px 24px; font-weight: 700;">Current Highest</th>
+                        <th style="padding: 16px 24px; font-weight: 700;">My Bid</th>
+                        <th style="padding: 16px 24px; font-weight: 700;">Position</th>
+                        {% endif %}
+
+                        <th style="padding: 16px 24px; font-weight: 700; text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for auction in auctions %}
+                    <tr style="border-bottom: 1px solid var(--gray-100); transition: background 0.2s;">
+                        <!-- Title Cell -->
+                        <td style="padding: 20px 24px;">
+                            <div
+                                style="font-weight: 700; color: var(--gray-900); font-size: 1.05rem; margin-bottom: 4px;">
+                                {{ auction.title }}</div>
+                            <div style="font-size: 0.85rem; color: var(--gray-500);">Ends: {{
+                                auction.end_time.split('T')[0] }}</div>
+                        </td>
+
+                        <!-- Status Cell -->
+                        <td style="padding: 20px 24px;">
+                            <span class="status-badge status-{{ auction.status }}"
+                                style="position: relative; right: 0; top: 0; display: inline-block;">
+                                {{ auction.status | capitalize }}
+                            </span>
+                        </td>
+
+                        {% if current_user.role in ('seller', 'admin') %}
+                        <!-- Seller Cells -->
+                        <td style="padding: 20px 24px; font-weight: 600; color: var(--gray-700);">₹{{ "%.2f" |
+                            format(auction.starting_price) }}</td>
+                        <td style="padding: 20px 24px; font-weight: 800; color: var(--success);">
+                            {% if auction.highest_bid %} ₹{{ "%.2f" | format(auction.highest_bid) }} {% else %} - {%
+                            endif %}
+                        </td>
+                        <td style="padding: 20px 24px; font-weight: 600; color: var(--gray-600);">{{ auction.bid_count
+                            }}</td>
+
+                        {% else %}
+                        <!-- Bidder Cells -->
+                        <td style="padding: 20px 24px; font-weight: 700; color: var(--gray-700);">
+                            ₹{{ "%.2f" | format(auction.highest_bid if auction.highest_bid else auction.starting_price)
+                            }}
+                        </td>
+                        <td style="padding: 20px 24px; font-weight: 800; color: var(--gray-900);">
+                            ₹{{ "%.2f" | format(auction.my_bid) }}
+                        </td>
+                        <td style="padding: 20px 24px;">
+                            {% if auction.is_winning %}
+                            <span
+                                style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;">👑
+                                Winning</span>
+                            {% else %}
+                            <span
+                                style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;">⚠️
+                                Outbid</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+
+                        <!-- Action Cell -->
+                        <td style="padding: 20px 24px; text-align: right;">
+                            <a href="{{ url_for('auction_detail', auction_id=auction.id) }}"
+                                class="btn btn-outline btn-sm">View Item</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
-# BidSphere - Auction Management System MVP
+# Art&Auction - Auction Management System MVP
 
-This is a basic MVP layout for the BidSphere Auction Management System.
+This is a basic MVP layout for the Art&Auction Auction Management System.
 
 ## Structure
 - `index.html`: Main HTML structure.

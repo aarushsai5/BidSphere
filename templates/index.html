@@ -1,21 +1,305 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% block title %}Art&Auction — Smart Indian Auction Platform{% endblock %}
 
 {% block content %}
-<h1>Live Auctions</h1>
+<section class="hero">
+    <!-- Flying background shapes -->
+    <div class="floating-shape shape-1"></div>
+    <div class="floating-shape shape-2"></div>
+    <div class="floating-shape shape-3"></div>
 
-<div class="auction-card">
-    <img src="https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-        alt="Vintage Watch" class="item-image">
-    <div class="card-details">
-        <h2>Vintage Watch</h2>
-        <div class="bid-info">
-            <span class="label">Current Bid:</span>
-            <span class="value">₹5,000</span>
+    <div class="container">
+        <!-- Indian localized badge -->
+        <div class="hero-badge" data-aos="zoom-in" data-aos-duration="600">
+            <span style="font-size: 1.2rem; vertical-align: middle; margin-right: 4px;">🇮🇳</span>
+            India's Trusted Auction Platform
         </div>
-        <div class="timer">
-            00:10:00
+        <h1 data-aos="fade-up" data-aos-delay="100">Discover & Bid on <span class="highlight">Amazing Items</span></h1>
+        <p data-aos="fade-up" data-aos-delay="200">Join live auctions across India. Place your bids safely in ₹ INR and
+            win incredible deals on verified listings.</p>
+
+        <div class="hero-actions" data-aos="fade-up" data-aos-delay="300">
+            {% if not current_user %}
+            <a href="{{ url_for('register') }}" class="btn btn-primary">Start Bidding Free</a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline">Sign In</a>
+            {% else %}
+            <a href="{{ url_for('create_auction') if current_user.role in ('seller', 'admin') else url_for('dashboard') }}"
+                class="btn btn-primary">
+                {{ 'List an Item' if current_user.role in ('seller', 'admin') else 'My Dashboard' }}
+            </a>
+            {% endif %}
         </div>
-        <button class="bid-btn">Place Bid</button>
+
+        <div class="hero-stats" data-aos="fade-up" data-aos-delay="400"
+            style="display: inline-flex; background: var(--white); border-radius: var(--radius-lg); padding: 12px 32px; gap: 40px; box-shadow: var(--shadow-md); border: 1px solid var(--gray-200);">
+            <div style="text-align: left;">
+                <span style="display: block; font-size: 1.8rem; font-weight: 800; color: var(--secondary);">2M+</span>
+                <span
+                    style="font-size: 0.8rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 1px;">Auctions
+                    Done</span>
+            </div>
+            <div style="width: 1px; background: var(--gray-200);"></div>
+            <div style="text-align: left;">
+                <span style="display: block; font-size: 1.8rem; font-weight: 800; color: var(--primary);">₹</span>
+                <span
+                    style="font-size: 0.8rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 1px;">INR
+                    Currency</span>
+            </div>
+            <div style="width: 1px; background: var(--gray-200);"></div>
+            <div style="text-align: left;">
+                <span style="display: block; font-size: 1.8rem; font-weight: 800; color: #10b981;">100%</span>
+                <span
+                    style="font-size: 0.8rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 1px;">Secure
+                    Bidding</span>
+            </div>
+        </div>
     </div>
+</section>
+
+<div class="container">
+    <!-- Categories Section -->
+    <section id="categories" style="padding-top: 40px;" data-aos="fade-up">
+        <div class="section-title">
+            <h2 style="font-size: 1.8rem; font-weight: 800;">Browse Categories</h2>
+            <p style="color: var(--gray-500); margin-top: 8px;">Find exactly what you are looking for.</p>
+        </div>
+        <div class="categories-grid">
+            <a href="{{ url_for('index') }}?q=antique" class="category-card">
+                <span class="category-icon">🏺</span>
+                <h3 class="category-name">Antiques</h3>
+            </a>
+            <a href="{{ url_for('index') }}?q=car" class="category-card">
+                <span class="category-icon">🚗</span>
+                <h3 class="category-name">Vehicles</h3>
+            </a>
+            <a href="{{ url_for('index') }}?q=art" class="category-card">
+                <span class="category-icon">🎨</span>
+                <h3 class="category-name">Fine Art</h3>
+            </a>
+            <a href="{{ url_for('index') }}?q=jewelry" class="category-card">
+                <span class="category-icon">💎</span>
+                <h3 class="category-name">Jewelry</h3>
+            </a>
+            <a href="{{ url_for('index') }}?q=electronics" class="category-card">
+                <span class="category-icon">💻</span>
+                <h3 class="category-name">Electronics</h3>
+            </a>
+            <a href="{{ url_for('index') }}" class="category-card"
+                style="background: var(--gradient-secondary); color: white; border: none;">
+                <span class="category-icon">✨</span>
+                <h3 class="category-name" style="color: white;">View All</h3>
+            </a>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters" data-aos="fade-up">
+        <form method="GET" action="{{ url_for('index') }}" class="filter-form">
+            <div class="filter-group">
+                <input type="text" name="q" placeholder="What are you looking for?" value="{{ search }}" class="input"
+                    style="flex: 2;">
+                <select name="status" class="input select" style="flex: 1;">
+                    <option value="all" {% if status_filter=='all' %}selected{% endif %}>All Status</option>
+                    <option value="upcoming" {% if status_filter=='upcoming' %}selected{% endif %}>Upcoming</option>
+                    <option value="live" {% if status_filter=='live' %}selected{% endif %}>Live Now</option>
+                    <option value="closed" {% if status_filter=='closed' %}selected{% endif %}>Closed</option>
+                </select>
+                <button type="submit" class="btn btn-primary" style="padding: 12px 32px;"><svg width="20" height="20"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" style="margin-right:8px;">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg> Search</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Auction Grid -->
+    {% if auctions %}
+    <div class="section-title" data-aos="fade-right"
+        style="margin-top: 40px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="font-size: 1.8rem; font-weight: 800;">
+            {{ '🔴 Live Auctions' if status_filter == 'live' else ('📅 Upcoming' if status_filter == 'upcoming' else ('✓
+            Closed' if status_filter == 'closed' else 'All Discoveries')) }}
+        </h2>
+        <span class="section-count"
+            style="background: var(--gray-100); padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem;">{{
+            auctions | length }} items</span>
+    </div>
+
+    <section class="auction-grid">
+        {% for auction in auctions %}
+        <a href="{{ url_for('auction_detail', auction_id=auction.id) }}" class="auction-card" data-aos="fade-up"
+            data-aos-delay="{{ loop.index0 * 100 % 400 }}">
+            <div class="card-image">
+                {% if auction.image %}
+                <img src="{{ url_for('static', filename='images/' + auction.image) }}" alt="{{ auction.title }}">
+                {% else %}
+                <div class="card-image-placeholder">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" class="feather feather-image">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                </div>
+                {% endif %}
+                <span class="status-badge status-{{ auction.status }}">{{ auction.status | capitalize }}</span>
+            </div>
+            <div class="card-body">
+                <h3 class="card-title">{{ auction.title }}</h3>
+                <p class="card-seller">listed by <span style="font-weight: 600; color: var(--secondary);">{{
+                        auction.seller_name }}</span></p>
+                <div class="card-info">
+                    <div class="card-price">
+                        <span class="label">Current Bid</span>
+                        <span class="value">₹{{ "%.2f" | format(auction.highest_bid if auction.highest_bid else
+                            auction.starting_price) }}</span>
+                    </div>
+                    <div class="card-bids">
+                        <span class="label">Total Bids</span>
+                        <span class="value">{{ auction.bid_count }}</span>
+                    </div>
+                </div>
+                <div class="card-time">
+                    {% if auction.status == 'live' %}
+                    <span class="time-label" style="color: var(--danger);">⏱ Ends in:</span>
+                    <span class="time-value countdown" data-end="{{ auction.end_time }}"
+                        style="font-weight: 700; color: var(--danger);">{{ auction.end_time | format_ist }}</span>
+                    {% elif auction.status == 'upcoming' %}
+                    <span class="time-label">📅 Starts on:</span>
+                    <span class="time-value">{{ auction.start_time | format_ist }}</span>
+                    {% else %}
+                    <span class="time-label">✓ Ended</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </section>
+    {% else %}
+    <div class="empty-state" data-aos="zoom-in"
+        style="text-align: center; padding: 80px 20px; background: var(--white); border-radius: var(--radius-lg); border: 1px dashed var(--gray-300); margin: 40px 0;">
+        <div class="empty-icon" style="font-size: 4rem; margin-bottom: 16px;">🔍</div>
+        <h3 style="font-size: 1.5rem; margin-bottom: 8px;">No auctions found</h3>
+        <p style="color: var(--gray-500); max-width: 400px; margin: 0 auto 24px;">We couldn't find any items matching
+            your current filters. Try changing your search terms or view all items.</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Clear Filters</a>
+    </div>
+    {% endif %}
 </div>
+
+<!-- Process Section -->
+<section class="how-it-works bg-white"
+    style="background: var(--white); margin-top: 40px; border-top: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100);">
+    <div class="container" data-aos="fade-up">
+        <div class="section-title" style="text-align: center;">
+            <h2 style="font-size: 2.2rem; font-weight: 800;">How Art&Auction Works</h2>
+            <p style="color: var(--gray-500); max-width: 600px; margin: 12px auto 0;">The secure, transparent way to
+                auction items across India.</p>
+        </div>
+        <div class="steps-container">
+            <div class="step-box" data-aos="fade-up" data-aos-delay="100">
+                <div class="step-icon">✍️</div>
+                <h3>1. Register Account</h3>
+                <p>Sign up securely using your email. Verify your identity to ensure a safe bidding community.</p>
+            </div>
+            <div class="step-box" data-aos="fade-up" data-aos-delay="200">
+                <div class="step-icon">🏷️</div>
+                <h3>2. List or Discover</h3>
+                <p>Sellers can list items with reserve prices. Buyers can browse across verified categories.</p>
+            </div>
+            <div class="step-box" data-aos="fade-up" data-aos-delay="300">
+                <div class="step-icon">⚖️</div>
+                <h3>3. Place your Bid</h3>
+                <p>Join live auctions. Our automated system handles increments and ensures fair play via smart tech.</p>
+            </div>
+            <div class="step-box" data-aos="fade-up" data-aos-delay="400">
+                <div class="step-icon">🏆</div>
+                <h3>4. Win & Transact</h3>
+                <p>Highest bidder wins! Proceed to our secure gateway to finalize the transaction smoothly.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Review Section -->
+<section class="reviews-section">
+    <!-- Background Indian Motif Subtly -->
+    <div style="position: absolute; top: -50%; right: -10%; opacity: 0.03; pointer-events: none;">
+        <svg width="800" height="800" viewBox="0 0 100 100" fill="currentColor">
+            <path d="M50 85 C30 85 15 65 25 45 C30 35 45 35 50 20 C55 35 70 35 75 45 C85 65 70 85 50 85 Z" />
+        </svg>
+    </div>
+    <div class="container">
+        <div class="section-title" data-aos="fade-up" style="text-align: center; margin-bottom: 40px;">
+            <h2 style="font-size: 2.2rem; font-weight: 800; color: white;">Trusted by Indians Nationwide</h2>
+            <p style="color: var(--gray-400); max-width: 600px; margin: 12px auto 0;">See what buyers and sellers are
+                saying about their Art&Auction experience.</p>
+        </div>
+
+        <div class="reviews-grid">
+            <div class="review-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="review-stars">★★★★★</div>
+                <p class="review-text">"I sold my grandfather's vintage Royal Enfield here. The process was incredibly
+                    smooth, and I got a much better price than local dealers offered in Delhi. The bidding wars at the
+                    end were thrilling!"</p>
+                <div class="review-author">
+                    <div class="review-avatar">A</div>
+                    <div class="review-info">
+                        <h4>Arjun Sharma</h4>
+                        <p>Seller from New Delhi</p>
+                    </div>
+                </div>
+            </div>
+            <div class="review-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="review-stars">★★★★★</div>
+                <p class="review-text">"As a collector of rare Indian coins, Art&Auction is my daily haunt. The guarantee of
+                    verified sellers and the transparent ₹ bidding structure makes it the best platform in the country."
+                </p>
+                <div class="review-author">
+                    <div class="review-avatar" style="background: var(--gradient-primary);">R</div>
+                    <div class="review-info">
+                        <h4>Ritu Patel</h4>
+                        <p>Buyer from Ahmedabad</p>
+                    </div>
+                </div>
+            </div>
+            <div class="review-card" data-aos="fade-up" data-aos-delay="300">
+                <div class="review-stars">★★★★☆</div>
+                <p class="review-text">"Bought a used office laptop batch for my startup in Bangalore. Great deals,
+                    though I wish there was an auto-bid feature up to a certain limit. Otherwise, fantastic platform."
+                </p>
+                <div class="review-author">
+                    <div class="review-avatar" style="background: #10b981;">V</div>
+                    <div class="review-info">
+                        <h4>Vijay Kumar</h4>
+                        <p>Buyer from Bengaluru</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.countdown').forEach(function (el) {
+        var raw = el.dataset.end;
+        var endTime = new Date(raw.replace(' ', 'T') + '+05:30').getTime();
+        function tick() {
+            var now = Date.now();
+            var diff = endTime - now;
+            if (diff <= 0) { el.textContent = 'Ended'; el.style.color = 'var(--gray-500)'; return; }
+            var h = Math.floor(diff / 3600000);
+            var m = Math.floor((diff % 3600000) / 60000);
+            var s = Math.floor((diff % 60000) / 1000);
+            el.textContent = h + 'h ' + m + 'm ' + s + 's';
+            setTimeout(tick, 1000);
+        }
+        tick();
+    });
+</script>
 {% endblock %}

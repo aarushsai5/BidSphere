@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Create New Auction — Art&Auction{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 80px;" data-aos="fade-up">
+    <div style="margin-bottom: 40px;">
+        <h1 style="font-size: 2.4rem; font-weight: 800; color: var(--secondary);">Create New Auction</h1>
+        <p style="color: var(--gray-500); font-size: 1.1rem;">List your item for auction and reach thousands of
+            potential buyers across India</p>
+    </div>
+
+    <form action="{{ url_for('create_auction') }}" method="POST" enctype="multipart/form-data" class="create-grid">
+
+        <!-- Left Column: Main Details -->
+        <div>
+            <!-- Item Details Section -->
+            <div class="form-section">
+                <h2 class="section-header">Item Details</h2>
+                <p class="section-desc">Provide detailed information about your product</p>
+
+                <div class="form-group">
+                    <label for="title" class="form-label">Auction Title*</label>
+                    <input type="text" id="title" name="title" class="input" required
+                        placeholder="e.g. Rare 1950s Coin Collection">
+                    <p style="font-size: 0.8rem; color: var(--gray-500); margin-top: 8px;">Enter a descriptive title for
+                        your auction (this is shown to bidders).</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="category" class="form-label">Category*</label>
+                    <select id="category" name="category" class="input select" required>
+                        <option value="">Select a category</option>
+                        <option value="antiques">Antiques & Collectibles</option>
+                        <option value="electronics">Electronics & Gadgets</option>
+                        <option value="vehicles">Vehicles & Automotive</option>
+                        <option value="art">Fine Art & Artifacts</option>
+                        <option value="jewelry">Jewelry & Watches</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="description" class="form-label">Item Description*</label>
+                    <textarea id="description" name="description" class="input" rows="5" required
+                        placeholder="Provide a detailed description of your item, including history, specs, and any notable features..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Item Images* (max 5)</label>
+                    <div class="image-upload-box">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            style="margin-bottom: 16px;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <p style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Click to add, or drag &
+                            drop</p>
+                        <p style="color: var(--gray-500); font-size: 0.85rem;">PNG, JPG up to 10MB</p>
+                        <input type="file" id="image" name="image" accept="image/*" style="display: none;" required>
+                        <!-- Note: Since this is an MVP UI demo, we hook up multiple files visually but backend only takes 1 currently -->
+                        <div style="margin-top: 20px;">
+                            <button type="button" class="btn btn-outline btn-sm"
+                                onclick="document.getElementById('image').click();">Select Files</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condition Section -->
+            <div class="form-section">
+                <h2 class="section-header">Item Condition</h2>
+                <p class="section-desc">Accurately describe the state of your item</p>
+
+                <div class="condition-grid">
+                    <label class="condition-card">
+                        <input type="radio" name="condition" value="new" required>
+                        <div class="condition-content">
+                            <span style="font-weight: 700; display: block; margin-bottom: 4px;">✨ Brand New</span>
+                            <span style="font-size: 0.85rem; color: var(--gray-500);">Unused, in original
+                                packaging</span>
+                        </div>
+                    </label>
+                    <label class="condition-card">
+                        <input type="radio" name="condition" value="like-new">
+                        <div class="condition-content">
+                            <span style="font-weight: 700; display: block; margin-bottom: 4px;">💎 Like New</span>
+                            <span style="font-size: 0.85rem; color: var(--gray-500);">Minimal use, excellent
+                                state</span>
+                        </div>
+                    </label>
+                    <label class="condition-card">
+                        <input type="radio" name="condition" value="good">
+                        <div class="condition-content">
+                            <span style="font-weight: 700; display: block; margin-bottom: 4px;">👍 Good</span>
+                            <span style="font-size: 0.85rem; color: var(--gray-500);">Normal wear, fully
+                                functional</span>
+                        </div>
+                    </label>
+                    <label class="condition-card">
+                        <input type="radio" name="condition" value="fair">
+                        <div class="condition-content">
+                            <span style="font-weight: 700; display: block; margin-bottom: 4px;">🛠️ Fair</span>
+                            <span style="font-size: 0.85rem; color: var(--gray-500);">Visible wear, some defects</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="condition_notes" class="form-label">Additional Condition Notes</label>
+                    <textarea id="condition_notes" name="condition_notes" class="input" rows="2"
+                        placeholder="Describe any specific wear, damage, or unique aspects..."></textarea>
+                </div>
+            </div>
+
+            <div
+                style="background: var(--gray-100); padding: 24px; border-radius: var(--radius); border-left: 4px solid var(--secondary); margin-bottom: 24px;">
+                <h4 style="font-weight: 700; margin-bottom: 8px; color: var(--secondary);">Before You Submit</h4>
+                <p style="font-size: 0.95rem; color: var(--gray-600);">Please review all information carefully. Once
+                    your auction is live, some details cannot be changed. Make sure your photos are high-quality and
+                    your description is accurate and complete.</p>
+            </div>
+        </div>
+
+        <!-- Right Column: Sidebar (Pricing & Timing) -->
+        <div class="sidebar-sticky">
+            <!-- Pricing Section -->
+            <div class="form-section">
+                <h2 class="section-header">Pricing & Bidding</h2>
+                <p class="section-desc" style="margin-bottom: 16px;">Set your starting price and bidding parameters</p>
+
+                <div class="form-group">
+                    <label for="starting_price" class="form-label">Starting Bid Price*</label>
+                    <div class="price-input-wrapper">
+                        <span class="currency">₹</span>
+                        <input type="number" id="starting_price" name="starting_price" class="input" step="1.00" min="0"
+                            required placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reserve_price" class="form-label">Reserve Price (Optional)</label>
+                    <div class="price-input-wrapper">
+                        <span class="currency">₹</span>
+                        <input type="number" id="reserve_price" name="reserve_price" class="input" step="1.00" min="0"
+                            placeholder="0.00">
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--gray-500); margin-top: 4px;">Lowest price you will accept
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label for="min_increment" class="form-label">Bid Increment*</label>
+                    <div class="price-input-wrapper">
+                        <span class="currency">₹</span>
+                        <input type="number" id="min_increment" name="min_increment" class="input" step="1.00" min="1"
+                            required placeholder="0">
+                    </div>
+                </div>
+
+                <!-- Fee Display -->
+                <div class="fee-box">
+                    <p
+                        style="font-weight: 700; margin-bottom: 12px; font-size: 0.9rem; text-transform: uppercase; color: var(--gray-600); letter-spacing: 0.5px;">
+                        Fee Structure</p>
+                    <div class="fee-row">
+                        <span>Listing Fee:</span>
+                        <span style="color: var(--success); font-weight: 600;">Free</span>
+                    </div>
+                    <div class="fee-row">
+                        <span>Final Value Fee (5%):</span>
+                        <span id="fvf-amt">--</span>
+                    </div>
+                    <div class="fee-row">
+                        <span>Payment Processing (2.9%):</span>
+                        <span id="pp-amt">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timing Section -->
+            <div class="form-section">
+                <h2 class="section-header">Auction Timing</h2>
+                <p class="section-desc" style="margin-bottom: 16px;">Schedule your auction</p>
+
+                <div class="timing-tabs">
+                    <div class="timing-tab active" id="tab-now" onclick="toggleSchedule(false)">🚀 Start Now</div>
+                    <div class="timing-tab" id="tab-schedule" onclick="toggleSchedule(true)">📅 Schedule</div>
+                </div>
+
+                <div class="form-group" id="start-time-group" style="display: none; margin-bottom: 20px;">
+                    <label for="start_time" class="form-label">Start Date & Time*</label>
+                    <input type="datetime-local" id="start_time" name="start_time" class="input">
+                </div>
+
+                <div class="form-group">
+                    <label for="end_time" class="form-label">End Date & Time*</label>
+                    <input type="datetime-local" id="end_time" name="end_time" class="input" required>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; margin-top: 30px;">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline" style="flex: 1;">Cancel</a>
+                <button type="submit" class="btn btn-primary" style="flex: 2; font-size: 1.1rem;">Create
+                    Auction</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Fee Calculator
+    const priceInput = document.getElementById('starting_price');
+    const fvfAmt = document.getElementById('fvf-amt');
+    const ppAmt = document.getElementById('pp-amt');
+
+    priceInput.addEventListener('input', function () {
+        let val = parseFloat(this.value);
+        if (isNaN(val) || val < 0) {
+            fvfAmt.textContent = '--';
+            ppAmt.textContent = '--';
+            return;
+        }
+        fvfAmt.textContent = '₹' + (val * 0.05).toFixed(2);
+        ppAmt.textContent = '₹' + (val * 0.029).toFixed(2);
+    });
+
+    // Schedule Toggle
+    function toggleSchedule(isSchedule) {
+        document.getElementById('tab-now').classList.toggle('active', !isSchedule);
+        document.getElementById('tab-schedule').classList.toggle('active', isSchedule);
+
+        const startGroup = document.getElementById('start-time-group');
+        const startInput = document.getElementById('start_time');
+
+        if (isSchedule) {
+            startGroup.style.display = 'block';
+            startInput.setAttribute('required', 'required');
+        } else {
+            startGroup.style.display = 'none';
+            startInput.removeAttribute('required');
+            startInput.value = '';
+        }
+    }
+</script>
+{% endblock %}
