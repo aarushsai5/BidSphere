@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, g, flash
+import requests
+import threading
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
@@ -7,25 +9,138 @@ from config import Config
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Ensure database directory exists
-if not os.environ.get('VERCEL'):
-    os.makedirs(os.path.dirname(app.config['DATABASE']), exist_ok=True)
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Track if this lambda instance has performed its initial sync from Blob
+_DB_SYNCED = False
+
+def download_db_from_blob(target_path):
+    token = os.environ.get('BLOB_READ_WRITE_TOKEN')
+    if not token: return False
+    try:
+        headers = {'Authorization': f'Bearer {token}'}
+        list_res = requests.get('https://blob.vercel-storage.com/', headers=headers)
+        if list_res.status_code == 200:
+            blobs = list_res.json().get('blobs', [])
+            # Filter for auction.db and sort by uploadedAt descending (newest first)
+            # Vercel's uploadedAt is ISO 8601 string, which sorts correctly as a string
+            target_blobs = [b for b in blobs if b['pathname'] == 'auction.db']
+            if target_blobs:
+                target_blobs.sort(key=lambda x: x['uploadedAt'], reverse=True)
+                target_blob = target_blobs[0]
+                
+                # Add a timestamp to bypass any internal Vercel/CDN caching
+                url = f"{target_blob['url']}?t={int(time.time())}"
+                file_res = requests.get(url, headers=headers)
+                if file_res.status_code == 200:
+                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                    with open(target_path, 'wb') as f:
+                        f.write(file_res.content)
+                    print(f"Sync: Downloaded latest DB (uploaded: {target_blob['uploadedAt']})")
+                    return True
+    except Exception as e:
+        print(f"Sync Error (Download): {e}")
+    return False
+
+def upload_db_to_blob_sync(db_path):
+    token = os.environ.get('BLOB_READ_WRITE_TOKEN')
+    if not token: return
+    try:
+        with open(db_path, 'rb') as f:
+            # We must use these specific headers for Vercel private blob REST API
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'x-vercel-blob-add-random-suffix': 'false',
+                'x-vercel-blob-access': 'private',
+                'Content-Type': 'application/x-sqlite3'
+            }
+            upload_res = requests.put(
+                "https://blob.vercel-storage.com/auction.db",
+                headers=headers,
+                data=f
+            )
+            if upload_res.status_code == 200:
+                print(f"Sync: Successfully uploaded DB to Blob")
+            else:
+                print(f"Sync: Upload failed. Status: {upload_res.status_code}, Body: {upload_res.text}")
+    except Exception as e:
+        print(f"Sync Error (Upload): {e}")
+
+class DBProxy:
+    def __init__(self, conn, db_path):
+        self.conn = conn
+        self.db_path = db_path
+
+    def execute(self, query, params=()):
+        cursor = self.conn.execute(query, params)
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+        if os.environ.get('VERCEL'):
+            upload_db_to_blob_sync(self.db_path)
+
+    def close(self):
+        self.conn.close()
+
+    def cursor(self):
+        return self.conn.cursor()
+
+@app.route('/debug/db-status')
+def db_status():
+    global _DB_SYNCED
+    if not os.environ.get('VERCEL'):
+        return "Not on Vercel"
+    
+    db_path = app.config['DATABASE']
+    if os.environ.get('VERCEL'):
+        db_path = '/tmp/auction.db'
+    
+    size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+    
+    status = {
+        "db_exists": os.path.exists(db_path),
+        "db_size": size,
+        "instance_synced": _DB_SYNCED,
+        "sync_stat": getattr(g, '_sync_stat', 'None')
+    }
+    try:
+        db = get_db()
+        count = db.execute("SELECT COUNT(*) FROM auctions").fetchone()[0]
+        status["auction_count"] = count
+    except: pass
+    return status
 
 def get_db():
+    global _DB_SYNCED
     db = getattr(g, '_database', None)
     if db is None:
         db_path = app.config['DATABASE']
         if os.environ.get('VERCEL'):
             db_path = '/tmp/auction.db'
+            # Only mark as synced if the download actually succeeds
+            if not _DB_SYNCED:
+                print("Cold Start: Attempting DB sync from Vercel Blob...")
+                success = download_db_from_blob(db_path)
+                if success:
+                    _DB_SYNCED = True
+                    g._sync_stat = "Success"
+                else:
+                    g._sync_stat = "Failed"
+            else:
+                g._sync_stat = "Already Synced"
+                
+            # Fallback (safety) if file doesn't exist at all
             if not os.path.exists(db_path):
                 import shutil
                 try:
+                    os.makedirs(os.path.dirname(db_path), exist_ok=True)
                     shutil.copy2(app.config['DATABASE'], db_path)
-                except Exception:
-                    pass
-        db = g._database = sqlite3.connect(db_path)
-        db.row_factory = sqlite3.Row
+                except: pass
+        
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA journal_mode=DELETE")
+        conn.execute("PRAGMA synchronous=FULL")
+        conn.row_factory = sqlite3.Row
+        db = g._database = DBProxy(conn, db_path)
     return db
 
 @app.teardown_appcontext
@@ -38,7 +153,7 @@ def init_db():
     with app.app_context():
         db = get_db()
         with app.open_resource('database/schema.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
+            db.conn.cursor().executescript(f.read())
         db.commit()
 
 class User:
@@ -199,14 +314,42 @@ def create_auction():
         full_desc = f"**Category:** {category}\n**Condition:** {condition}\n**Condition Notes:** {notes}\n\n{description}"
         
         image_file = request.files.get('image')
-        filename = ''
+        image_url = ''
         if image_file and image_file.filename:
             import werkzeug.utils
             filename = werkzeug.utils.secure_filename(image_file.filename)
-            upload_path = app.config['UPLOAD_FOLDER']
+            
             if os.environ.get('VERCEL'):
-                upload_path = '/tmp'
-            image_file.save(os.path.join(upload_path, filename))
+                # Upload directly to Vercel Blob
+                global _LAST_UPLOAD_INFO
+                token = os.environ.get('BLOB_READ_WRITE_TOKEN')
+                headers = {
+                    'Authorization': f'Bearer {token}',
+                    'x-vercel-blob-add-random-suffix': 'true', 
+                    'x-vercel-blob-access': 'public' 
+                }
+                from urllib.parse import quote
+                safe_path = quote(filename)
+                print(f"Uploading image {filename} (safe: {safe_path}) to Vercel Blob...")
+                try:
+                    image_file.seek(0)
+                    image_bytes = image_file.read()
+                    
+                    # Use v1/upload POST endpoint directly
+                    upload_res = requests.post(
+                        f"https://blob.vercel-storage.com/v1/upload?pathname={safe_path}",
+                        headers=headers,
+                        data=image_bytes
+                    )
+                    if upload_res.status_code == 200:
+                        image_url = upload_res.json().get('url', '')
+                except: pass
+            else:
+                # Local dev
+                upload_path = app.config['UPLOAD_FOLDER']
+                os.makedirs(upload_path, exist_ok=True)
+                image_file.save(os.path.join(upload_path, filename))
+                image_url = filename
             
         if not start_time:
             from datetime import datetime
@@ -215,7 +358,7 @@ def create_auction():
         db = get_db()
         db.execute(
             'INSERT INTO auctions (seller_id, title, description, image, starting_price, min_increment, start_time, end_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "live")',
-            (g.user.id, title, full_desc, filename, starting_price, min_increment, start_time, end_time)
+            (g.user.id, title, full_desc, image_url, starting_price, min_increment, start_time, end_time)
         )
         db.commit()
 

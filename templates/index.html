@@ -133,7 +133,11 @@
             data-aos-delay="{{ loop.index0 * 100 % 400 }}">
             <div class="card-image">
                 {% if auction.image %}
+                {% if auction.image.startswith('http') %}
+                <img src="{{ auction.image }}" alt="{{ auction.title }}">
+                {% else %}
                 <img src="{{ url_for('static', filename='images/' + auction.image) }}" alt="{{ auction.title }}">
+                {% endif %}
                 {% else %}
                 <div class="card-image-placeholder">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -254,7 +258,8 @@
             </div>
             <div class="review-card" data-aos="fade-up" data-aos-delay="200">
                 <div class="review-stars">★★★★★</div>
-                <p class="review-text">"As a collector of rare Indian coins, Art&Auction is my daily haunt. The guarantee of
+                <p class="review-text">"As a collector of rare Indian coins, Art&Auction is my daily haunt. The
+                    guarantee of
                     verified sellers and the transparent ₹ bidding structure makes it the best platform in the country."
                 </p>
                 <div class="review-author">
