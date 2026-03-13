@@ -1,147 +1,75 @@
 from flask import Flask, render_template, request, redirect, url_for, session, g, flash
 import requests
-import threading
-from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3
 import os
+import time
+from werkzeug.security import generate_password_hash, check_password_hash
 from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Track if this lambda instance has performed its initial sync from Blob
-_DB_SYNCED = False
+# ─────────────────────────────────────────────────────────────
+# Database — PostgreSQL via psycopg2
+# Falls back to SQLite for local dev if DATABASE_URL is not set
+# ─────────────────────────────────────────────────────────────
 
-def download_db_from_blob(target_path):
-    token = os.environ.get('BLOB_READ_WRITE_TOKEN')
-    if not token: return False
-    try:
-        headers = {'Authorization': f'Bearer {token}'}
-        list_res = requests.get('https://blob.vercel-storage.com/', headers=headers)
-        if list_res.status_code == 200:
-            blobs = list_res.json().get('blobs', [])
-            # Filter for auction.db and sort by uploadedAt descending (newest first)
-            # Vercel's uploadedAt is ISO 8601 string, which sorts correctly as a string
-            target_blobs = [b for b in blobs if b['pathname'] == 'auction.db']
-            if target_blobs:
-                target_blobs.sort(key=lambda x: x['uploadedAt'], reverse=True)
-                target_blob = target_blobs[0]
-                
-                # Add a timestamp to bypass any internal Vercel/CDN caching
-                url = f"{target_blob['url']}?t={int(time.time())}"
-                file_res = requests.get(url, headers=headers)
-                if file_res.status_code == 200:
-                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                    with open(target_path, 'wb') as f:
-                        f.write(file_res.content)
-                    print(f"Sync: Downloaded latest DB (uploaded: {target_blob['uploadedAt']})")
-                    return True
-    except Exception as e:
-        print(f"Sync Error (Download): {e}")
-    return False
-
-def upload_db_to_blob_sync(db_path):
-    token = os.environ.get('BLOB_READ_WRITE_TOKEN')
-    if not token: return
-    try:
-        with open(db_path, 'rb') as f:
-            # We must use these specific headers for Vercel private blob REST API
-            headers = {
-                'Authorization': f'Bearer {token}',
-                'x-vercel-blob-add-random-suffix': 'false',
-                'x-vercel-blob-access': 'private',
-                'Content-Type': 'application/x-sqlite3'
-            }
-            upload_res = requests.put(
-                "https://blob.vercel-storage.com/auction.db",
-                headers=headers,
-                data=f
-            )
-            if upload_res.status_code == 200:
-                print(f"Sync: Successfully uploaded DB to Blob")
-            else:
-                print(f"Sync: Upload failed. Status: {upload_res.status_code}, Body: {upload_res.text}")
-    except Exception as e:
-        print(f"Sync Error (Upload): {e}")
-
-class DBProxy:
-    def __init__(self, conn, db_path):
-        self.conn = conn
-        self.db_path = db_path
-
-    def execute(self, query, params=()):
-        cursor = self.conn.execute(query, params)
-        return cursor
-
-    def commit(self):
-        self.conn.commit()
-        if os.environ.get('VERCEL'):
-            upload_db_to_blob_sync(self.db_path)
-
-    def close(self):
-        self.conn.close()
-
-    def cursor(self):
-        return self.conn.cursor()
-
-@app.route('/debug/db-status')
-def db_status():
-    global _DB_SYNCED
-    if not os.environ.get('VERCEL'):
-        return "Not on Vercel"
-    
-    db_path = app.config['DATABASE']
-    if os.environ.get('VERCEL'):
-        db_path = '/tmp/auction.db'
-    
-    size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
-    
-    status = {
-        "db_exists": os.path.exists(db_path),
-        "db_size": size,
-        "instance_synced": _DB_SYNCED,
-        "sync_stat": getattr(g, '_sync_stat', 'None')
-    }
-    try:
-        db = get_db()
-        count = db.execute("SELECT COUNT(*) FROM auctions").fetchone()[0]
-        status["auction_count"] = count
-    except: pass
-    return status
+def _use_postgres():
+    return bool(app.config.get('DATABASE_URL'))
 
 def get_db():
-    global _DB_SYNCED
     db = getattr(g, '_database', None)
     if db is None:
-        db_path = app.config['DATABASE']
-        if os.environ.get('VERCEL'):
-            db_path = '/tmp/auction.db'
-            # Only mark as synced if the download actually succeeds
-            if not _DB_SYNCED:
-                print("Cold Start: Attempting DB sync from Vercel Blob...")
-                success = download_db_from_blob(db_path)
-                if success:
-                    _DB_SYNCED = True
-                    g._sync_stat = "Success"
-                else:
-                    g._sync_stat = "Failed"
-            else:
-                g._sync_stat = "Already Synced"
-                
-            # Fallback (safety) if file doesn't exist at all
-            if not os.path.exists(db_path):
-                import shutil
-                try:
-                    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-                    shutil.copy2(app.config['DATABASE'], db_path)
-                except: pass
-        
-        conn = sqlite3.connect(db_path)
-        conn.execute("PRAGMA journal_mode=DELETE")
-        conn.execute("PRAGMA synchronous=FULL")
-        conn.row_factory = sqlite3.Row
-        db = g._database = DBProxy(conn, db_path)
+        if _use_postgres():
+            import psycopg2
+            import psycopg2.extras
+            db_url = app.config['DATABASE_URL']
+            conn = psycopg2.connect(db_url)
+            conn.autocommit = False
+            db = g._database = conn
+        else:
+            import sqlite3
+            conn = sqlite3.connect(app.config['DATABASE'])
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.row_factory = sqlite3.Row
+            db = g._database = conn
     return db
+
+def db_execute(query, params=()):
+    """Execute a query and return a cursor. Handles ? vs %s differences."""
+    conn = get_db()
+    if _use_postgres():
+        import psycopg2.extras
+        # Convert SQLite-style ? placeholders to %s for psycopg2
+        pg_query = query.replace('?', '%s')
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(pg_query, params)
+        return cur
+    else:
+        return conn.execute(query, params)
+
+def db_commit():
+    """Commit the current transaction."""
+    conn = get_db()
+    conn.commit()
+
+def db_lastrowid(cur):
+    """Get the last inserted row ID in a cross-DB way."""
+    if _use_postgres():
+        # For INSERT ... RETURNING id, use fetchone()
+        # Otherwise fall back to lastval()
+        try:
+            row = cur.fetchone()
+            if row:
+                return row['id'] if hasattr(row, 'keys') else row[0]
+        except Exception:
+            pass
+        # fallback: query lastval
+        c = get_db().cursor()
+        c.execute("SELECT lastval()")
+        return c.fetchone()[0]
+    else:
+        return cur.lastrowid
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -149,12 +77,114 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
+_SQLITE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    username    TEXT    NOT NULL UNIQUE,
+    email       TEXT    NOT NULL UNIQUE,
+    password    TEXT    NOT NULL,
+    role        TEXT    NOT NULL DEFAULT 'bidder',
+    is_banned   INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS auctions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller_id       INTEGER NOT NULL,
+    title           TEXT    NOT NULL,
+    description     TEXT,
+    image           TEXT,
+    starting_price  REAL    NOT NULL,
+    min_increment   REAL    NOT NULL DEFAULT 1.0,
+    start_time      TEXT    NOT NULL,
+    end_time        TEXT    NOT NULL,
+    status          TEXT    NOT NULL DEFAULT 'upcoming',
+    winner_id       INTEGER,
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (seller_id) REFERENCES users(id),
+    FOREIGN KEY (winner_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS bids (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    auction_id  INTEGER NOT NULL,
+    bidder_id   INTEGER NOT NULL,
+    amount      REAL    NOT NULL,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (auction_id) REFERENCES auctions(id),
+    FOREIGN KEY (bidder_id)  REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS transactions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    auction_id  INTEGER NOT NULL UNIQUE,
+    winner_id   INTEGER NOT NULL,
+    amount      REAL    NOT NULL,
+    status      TEXT    NOT NULL DEFAULT 'pending',
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (auction_id) REFERENCES auctions(id),
+    FOREIGN KEY (winner_id)  REFERENCES users(id)
+);
+"""
+
 def init_db():
+    """Create tables. Uses PostgreSQL schema.sql on Vercel, inline SQLite schema locally."""
     with app.app_context():
-        db = get_db()
-        with app.open_resource('database/schema.sql', mode='r') as f:
-            db.conn.cursor().executescript(f.read())
-        db.commit()
+        conn = get_db()
+        if _use_postgres():
+            with app.open_resource('database/schema.sql', mode='r') as f:
+                schema = f.read()
+            cur = conn.cursor()
+            cur.execute(schema)
+            conn.commit()
+        else:
+            conn.executescript(_SQLITE_SCHEMA)
+            conn.commit()
+        print("DB initialized successfully.")
+
+# ─────────────────────────────────────────────────────────────
+# Image upload helpers
+# ─────────────────────────────────────────────────────────────
+
+def upload_image_to_blob(image_file, filename):
+    """Upload an image file to Vercel Blob and return the public URL."""
+    token = os.environ.get('BLOB_READ_WRITE_TOKEN')
+    if not token:
+        print("Upload Error: BLOB_READ_WRITE_TOKEN not set")
+        return ''
+    try:
+        image_file.seek(0)
+        image_bytes = image_file.read()
+        from urllib.parse import quote
+        safe_path = quote(filename)
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'x-vercel-blob-add-random-suffix': 'true',
+            'x-vercel-blob-access': 'public',
+            'Content-Type': _guess_content_type(filename),
+        }
+        upload_res = requests.put(
+            f"https://blob.vercel-storage.com/{safe_path}",
+            headers=headers,
+            data=image_bytes,
+            timeout=30,
+        )
+        if upload_res.status_code == 200:
+            url = upload_res.json().get('url', '')
+            print(f"Upload OK: {url}")
+            return url
+        else:
+            print(f"Upload failed: {upload_res.status_code} — {upload_res.text[:300]}")
+    except Exception as e:
+        print(f"Upload Error: {e}")
+    return ''
+
+def _guess_content_type(filename):
+    ext = filename.rsplit('.', 1)[-1].lower()
+    types = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+             'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml'}
+    return types.get(ext, 'application/octet-stream')
+
+# ─────────────────────────────────────────────────────────────
+# Auth helpers
+# ─────────────────────────────────────────────────────────────
 
 class User:
     def __init__(self, id, username, email, role):
@@ -169,10 +199,10 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        db = get_db()
-        row = db.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        row = db_execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         if row:
-            g.user = User(id=row['id'], username=row['username'], email=row['email'], role=row['role'])
+            g.user = User(id=row['id'], username=row['username'],
+                          email=row['email'], role=row['role'])
         else:
             g.user = None
 
@@ -182,69 +212,82 @@ def inject_user():
 
 @app.template_filter('format_ist')
 def format_ist(value):
-    # Stub for format_ist since it's used in templates
     return value
+
+# ─────────────────────────────────────────────────────────────
+# Debug route
+# ─────────────────────────────────────────────────────────────
+
+@app.route('/debug/db-status')
+def db_status():
+    status = {'using_postgres': _use_postgres()}
+    try:
+        count = db_execute("SELECT COUNT(*) as c FROM auctions").fetchone()
+        status['auction_count'] = count['c'] if count else 0
+        ucount = db_execute("SELECT COUNT(*) as c FROM users").fetchone()
+        status['user_count'] = ucount['c'] if ucount else 0
+    except Exception as e:
+        status['error'] = str(e)
+    return status
+
+# ─────────────────────────────────────────────────────────────
+# Routes
+# ─────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
-    db = get_db()
-    
     status_filter = request.args.get('status', 'all')
     search = request.args.get('q', '')
 
     query = 'SELECT * FROM auctions WHERE 1=1'
     params = []
-    
+
     if status_filter != 'all':
         query += ' AND status = ?'
         params.append(status_filter)
     if search:
-        query += ' AND (title LIKE ? OR description LIKE ?)'
+        query += ' AND (title ILIKE ? OR description ILIKE ?)' if _use_postgres() else ' AND (title LIKE ? OR description LIKE ?)'
         params.extend([f'%{search}%', f'%{search}%'])
 
-    auctions_rows = db.execute(query, params).fetchall()
-    
-    # We map row to dict to inject seller_name
+    auctions_rows = db_execute(query, params).fetchall()
+
     auctions = []
     for row in auctions_rows:
-        seller = db.execute('SELECT username FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
-        bids = db.execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
-        
+        seller = db_execute('SELECT username FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
+        bids = db_execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
         auc = dict(row)
         auc['seller_name'] = seller['username'] if seller else 'Unknown'
         auc['bid_count'] = bids['c'] if bids else 0
         auc['highest_bid'] = bids['m'] if bids['m'] else None
         auctions.append(auc)
 
-    return render_template('index.html', auctions=auctions, status_filter=status_filter, search=search)
+    return render_template('index.html', auctions=auctions,
+                           status_filter=status_filter, search=search)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        db = get_db()
-        
-        # Allow login by username or email
-        user = db.execute('SELECT * FROM users WHERE username = ? OR email = ?', (username, username)).fetchone()
-        
+
+        user = db_execute('SELECT * FROM users WHERE username = ? OR email = ?',
+                          (username, username)).fetchone()
+
         if user is None:
-            print(f"Login debug: User not found for {username}")
             flash('Incorrect username or email.', 'danger')
         elif not check_password_hash(str(user['password']), password):
-            print(f"Login debug: Password check failed for {username}")
             flash('Incorrect password.', 'danger')
         elif user['is_banned']:
-            print(f"Login debug: User {username} is banned")
             flash('This account is banned.', 'danger')
         else:
-            print(f"Login debug: Success for {username}")
             session.clear()
             session['user_id'] = user['id']
             flash('Successfully logged in.', 'success')
             return redirect(url_for('index'))
-            
+
     return render_template('login.html')
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -253,38 +296,36 @@ def register():
         email = request.form.get('email')
         password = request.form.get('password')
         role = request.form.get('role', 'bidder')
-        
-        db = get_db()
+
         error = None
-        
         if not username:
             error = 'Username is required.'
         elif not email:
             error = 'Email is required.'
         elif not password:
             error = 'Password is required.'
-        elif db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone() is not None:
+        elif db_execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone():
             error = f"User {username} is already registered."
-        elif db.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone() is not None:
+        elif db_execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone():
             error = f"Email {email} is already registered."
-            
+
         if error is None:
-            db.execute(
+            db_execute(
                 'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
                 (username, email, generate_password_hash(password), role)
             )
-            db.commit()
-            
-            # Auto login after register
-            user = db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+            db_commit()
+
+            user = db_execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
             session.clear()
             session['user_id'] = user['id']
             flash('Account created successfully!', 'success')
             return redirect(url_for('index'))
-            
+
         flash(error, 'danger')
 
     return render_template('register.html')
+
 
 @app.route('/logout')
 def logout():
@@ -292,240 +333,273 @@ def logout():
     flash('You have been logged out.', 'success')
     return redirect(url_for('index'))
 
+
 @app.route('/create-auction', methods=['GET', 'POST'])
 def create_auction():
     if not g.user or g.user.role not in ('seller', 'admin'):
         flash('You must be a seller to list items.', 'danger')
         return redirect(url_for('login'))
-        
+
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
         starting_price = request.form.get('starting_price')
         min_increment = request.form.get('min_increment')
-        
         category = request.form.get('category', 'misc').capitalize()
         condition = request.form.get('condition', 'good').capitalize()
         notes = request.form.get('condition_notes', '')
-        
         start_time = request.form.get('start_time')
         end_time = request.form.get('end_time')
-        
+
         full_desc = f"**Category:** {category}\n**Condition:** {condition}\n**Condition Notes:** {notes}\n\n{description}"
-        
+
+        # ── Image handling ──────────────────────────────────
         image_file = request.files.get('image')
         image_url = ''
         if image_file and image_file.filename:
             import werkzeug.utils
             filename = werkzeug.utils.secure_filename(image_file.filename)
-            
             if os.environ.get('VERCEL'):
-                # Upload directly to Vercel Blob
-                global _LAST_UPLOAD_INFO
-                token = os.environ.get('BLOB_READ_WRITE_TOKEN')
-                headers = {
-                    'Authorization': f'Bearer {token}',
-                    'x-vercel-blob-add-random-suffix': 'true', 
-                    'x-vercel-blob-access': 'public' 
-                }
-                from urllib.parse import quote
-                safe_path = quote(filename)
-                print(f"Uploading image {filename} (safe: {safe_path}) to Vercel Blob...")
-                try:
-                    image_file.seek(0)
-                    image_bytes = image_file.read()
-                    
-                    # Use v1/upload POST endpoint directly
-                    upload_res = requests.post(
-                        f"https://blob.vercel-storage.com/v1/upload?pathname={safe_path}",
-                        headers=headers,
-                        data=image_bytes
-                    )
-                    if upload_res.status_code == 200:
-                        image_url = upload_res.json().get('url', '')
-                except: pass
+                image_url = upload_image_to_blob(image_file, filename)
             else:
-                # Local dev
+                # Local dev: save to static/images/
                 upload_path = app.config['UPLOAD_FOLDER']
                 os.makedirs(upload_path, exist_ok=True)
-                image_file.save(os.path.join(upload_path, filename))
+                save_path = os.path.join(upload_path, filename)
+                image_file.seek(0)
+                image_file.save(save_path)
                 image_url = filename
-            
+
         if not start_time:
             from datetime import datetime
             start_time = datetime.now().strftime('%Y-%m-%dT%H:%M')
-            
-        db = get_db()
-        db.execute(
-            'INSERT INTO auctions (seller_id, title, description, image, starting_price, min_increment, start_time, end_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "live")',
-            (g.user.id, title, full_desc, image_url, starting_price, min_increment, start_time, end_time)
+
+        db_execute(
+            'INSERT INTO auctions (seller_id, title, description, image, starting_price, min_increment, start_time, end_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (g.user.id, title, full_desc, image_url, starting_price, min_increment, start_time, end_time, 'live')
         )
-        db.commit()
+        db_commit()
 
         flash('Auction created successfully!', 'success')
         return redirect(url_for('index'))
+
     return render_template('create_auction.html')
+
 
 @app.route('/dashboard')
 def dashboard():
     if not g.user:
         flash('Please login to view your dashboard.', 'danger')
         return redirect(url_for('login'))
-        
-    db = get_db()
+
     auctions = []
-    
     if g.user.role in ('seller', 'admin'):
-        # Show seller's listings
-        rows = db.execute('SELECT * FROM auctions WHERE seller_id = ? ORDER BY created_at DESC', (g.user.id,)).fetchall()
+        rows = db_execute(
+            'SELECT * FROM auctions WHERE seller_id = ? ORDER BY created_at DESC',
+            (g.user.id,)
+        ).fetchall()
         for row in rows:
-            bids = db.execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
+            bids = db_execute(
+                'SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?',
+                (row['id'],)
+            ).fetchone()
             auc = dict(row)
             auc['bid_count'] = bids['c'] if bids else 0
             auc['highest_bid'] = bids['m'] if bids['m'] else None
             auctions.append(auc)
     else:
-        # Show bidder's active bids
         query = '''
             SELECT DISTINCT a.* FROM auctions a
             JOIN bids b ON a.id = b.auction_id
-            WHERE b.bidder_id = ? ORDER BY b.created_at DESC
+            WHERE b.bidder_id = ? ORDER BY a.created_at DESC
         '''
-        rows = db.execute(query, (g.user.id,)).fetchall()
+        rows = db_execute(query, (g.user.id,)).fetchall()
         for row in rows:
-            bids = db.execute('SELECT MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
-            user_bid = db.execute('SELECT MAX(amount) as m FROM bids WHERE auction_id = ? AND bidder_id = ?', (row['id'], g.user.id)).fetchone()
+            bids = db_execute('SELECT MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
+            user_bid = db_execute(
+                'SELECT MAX(amount) as m FROM bids WHERE auction_id = ? AND bidder_id = ?',
+                (row['id'], g.user.id)
+            ).fetchone()
             auc = dict(row)
             auc['highest_bid'] = bids['m'] if bids['m'] else None
             auc['my_bid'] = user_bid['m'] if user_bid['m'] else None
-            # Check if user is currently winning
             auc['is_winning'] = auc['highest_bid'] == auc['my_bid']
             auctions.append(auc)
-            
+
     return render_template('dashboard.html', auctions=auctions)
+
 
 @app.route('/auction/<int:auction_id>')
 def auction_detail(auction_id):
-    db = get_db()
-    row = db.execute('SELECT * FROM auctions WHERE id = ?', (auction_id,)).fetchone()
+    row = db_execute('SELECT * FROM auctions WHERE id = ?', (auction_id,)).fetchone()
     if not row:
         flash('Auction not found.', 'danger')
         return redirect(url_for('index'))
-        
+
     auction = dict(row)
-    seller = db.execute('SELECT username FROM users WHERE id = ?', (auction['seller_id'],)).fetchone()
+    seller = db_execute('SELECT username FROM users WHERE id = ?', (auction['seller_id'],)).fetchone()
     auction['seller_name'] = seller['username'] if seller else 'Unknown'
-    
-    # Get current bids
-    bids = db.execute('''
-        SELECT b.amount, b.created_at, u.username as bidder_name 
+
+    bids = db_execute('''
+        SELECT b.amount, b.created_at, u.username as bidder_name
         FROM bids b
         JOIN users u ON b.bidder_id = u.id
-        WHERE b.auction_id = ? 
+        WHERE b.auction_id = ?
         ORDER BY b.amount DESC
     ''', (auction_id,)).fetchall()
-    
+
     current_bid = bids[0]['amount'] if bids else auction['starting_price']
-    
-    return render_template('auction_detail.html', auction=auction, bids=bids, current_bid=current_bid)
+
+    return render_template('auction_detail.html', auction=auction,
+                           bids=bids, current_bid=current_bid)
+
 
 @app.route('/auction/<int:auction_id>/bid', methods=['POST'])
 def place_bid(auction_id):
     if not g.user:
         flash('You must be logged in to place a bid.', 'danger')
         return redirect(url_for('login'))
-        
+
     if g.user.role == 'seller':
         flash('Sellers cannot place bids.', 'danger')
         return redirect(url_for('index'))
-        
+
     amount = float(request.form.get('amount', 0))
-    db = get_db()
-    
-    # Verify auction exists and is live
-    auction = db.execute('SELECT * FROM auctions WHERE id = ?', (auction_id,)).fetchone()
+
+    auction = db_execute('SELECT * FROM auctions WHERE id = ?', (auction_id,)).fetchone()
     if not auction:
         flash('Auction not found.', 'danger')
         return redirect(url_for('index'))
-        
+
     if auction['status'] != 'live':
         flash('This auction is not currently active.', 'danger')
         return redirect(url_for('auction_detail', auction_id=auction_id))
-        
-    # Check current highest bid
-    highest = db.execute('SELECT MAX(amount) as m FROM bids WHERE auction_id = ?', (auction_id,)).fetchone()
+
+    highest = db_execute('SELECT MAX(amount) as m FROM bids WHERE auction_id = ?', (auction_id,)).fetchone()
     current_highest = highest['m'] if highest['m'] else auction['starting_price']
-    
+
     min_bid = current_highest + auction['min_increment']
     if amount < min_bid:
         flash(f'Bid must be at least ₹{min_bid:.2f}.', 'warning')
     else:
-        db.execute('INSERT INTO bids (auction_id, bidder_id, amount) VALUES (?, ?, ?)',
-                  (auction_id, g.user.id, amount))
-        db.commit()
+        db_execute('INSERT INTO bids (auction_id, bidder_id, amount) VALUES (?, ?, ?)',
+                   (auction_id, g.user.id, amount))
+        db_commit()
         flash('Bid placed successfully!', 'success')
-        
+
     return redirect(url_for('auction_detail', auction_id=auction_id))
 
+
+# ── Seller delete their own auction ──────────────────────────
+@app.route('/seller/delete_auction/<int:auction_id>', methods=['POST'])
+def seller_delete_auction(auction_id):
+    if not g.user or g.user.role not in ('seller', 'admin'):
+        flash('Access denied.', 'danger')
+        return redirect(url_for('index'))
+
+    auction = db_execute('SELECT * FROM auctions WHERE id = ?', (auction_id,)).fetchone()
+    if not auction:
+        flash('Auction not found.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # Sellers can only delete their own auctions; admins can delete any
+    if g.user.role == 'seller' and auction['seller_id'] != g.user.id:
+        flash('You can only delete your own auctions.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    db_execute('DELETE FROM bids WHERE auction_id = ?', (auction_id,))
+    db_execute('DELETE FROM auctions WHERE id = ?', (auction_id,))
+    db_commit()
+
+    flash(f'Auction "{auction["title"]}" deleted successfully.', 'success')
+    return redirect(url_for('dashboard'))
+
+
+# ── Admin panel ───────────────────────────────────────────────
 @app.route('/admin-panel')
 def admin_panel():
     if not g.user or g.user.role != 'admin':
         flash('Access denied.', 'danger')
         return redirect(url_for('index'))
-        
-    db = get_db()
-    
-    # Get platform statistics
+
     stats = {}
-    stats['total_users'] = db.execute('SELECT COUNT(*) as c FROM users').fetchone()['c']
-    stats['total_auctions'] = db.execute('SELECT COUNT(*) as c FROM auctions').fetchone()['c']
-    stats['active_auctions'] = db.execute('SELECT COUNT(*) as c FROM auctions WHERE status = "live"').fetchone()['c']
-    stats['total_bids'] = db.execute('SELECT COUNT(*) as c FROM bids').fetchone()['c']
-    
-    # Get users list
-    users = db.execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
-    
-    # Get auctions list
+    stats['total_users'] = db_execute('SELECT COUNT(*) as c FROM users').fetchone()['c']
+    stats['total_auctions'] = db_execute('SELECT COUNT(*) as c FROM auctions').fetchone()['c']
+    stats['active_auctions'] = db_execute("SELECT COUNT(*) as c FROM auctions WHERE status = 'live'").fetchone()['c']
+    stats['total_bids'] = db_execute('SELECT COUNT(*) as c FROM bids').fetchone()['c']
+
+    users = db_execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
+
     auctions = []
-    rows = db.execute('''
-        SELECT a.*, u.username as seller_name 
-        FROM auctions a 
-        JOIN users u ON a.seller_id = u.id 
+    rows = db_execute('''
+        SELECT a.*, u.username as seller_name
+        FROM auctions a
+        JOIN users u ON a.seller_id = u.id
         ORDER BY a.created_at DESC
     ''').fetchall()
-    
     for row in rows:
-        bids = db.execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
+        bids = db_execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?',
+                          (row['id'],)).fetchone()
         auc = dict(row)
         auc['bid_count'] = bids['c'] if bids else 0
         auc['highest_bid'] = bids['m'] if bids['m'] else None
         auctions.append(auc)
-        
+
     return render_template('admin_panel.html', stats=stats, users=users, auctions=auctions)
+
 
 @app.route('/admin/delete_auction/<int:auction_id>', methods=['POST'])
 def admin_delete_auction(auction_id):
     if not g.user or g.user.role != 'admin':
         flash('Access denied.', 'danger')
         return redirect(url_for('index'))
-        
-    db = get_db()
-    auction = db.execute('SELECT id, title FROM auctions WHERE id = ?', (auction_id,)).fetchone()
-    
+
+    auction = db_execute('SELECT id, title FROM auctions WHERE id = ?', (auction_id,)).fetchone()
     if not auction:
         flash('Auction not found.', 'danger')
         return redirect(url_for('admin_panel'))
-        
-    # Delete associated bids first
-    db.execute('DELETE FROM bids WHERE auction_id = ?', (auction_id,))
-    # Delete the auction
-    db.execute('DELETE FROM auctions WHERE id = ?', (auction_id,))
-    db.commit()
-    
+
+    db_execute('DELETE FROM bids WHERE auction_id = ?', (auction_id,))
+    db_execute('DELETE FROM auctions WHERE id = ?', (auction_id,))
+    db_commit()
+
     flash(f'Auction "{auction["title"]}" was successfully deleted.', 'success')
     return redirect(url_for('admin_panel'))
 
+
+@app.route('/admin/ban_user/<int:user_id>', methods=['POST'])
+def admin_ban_user(user_id):
+    if not g.user or g.user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('index'))
+
+    user = db_execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('admin_panel'))
+
+    new_status = not user['is_banned']
+    db_execute('UPDATE users SET is_banned = ? WHERE id = ?', (new_status, user_id))
+    db_commit()
+
+    action = 'banned' if new_status else 'unbanned'
+    flash(f'User "{user["username"]}" has been {action}.', 'success')
+    return redirect(url_for('admin_panel'))
+
+
+# ─────────────────────────────────────────────────────────────
+# Startup
+# ─────────────────────────────────────────────────────────────
+
 if __name__ == '__main__':
-    if not os.path.exists(app.config['DATABASE']):
-        init_db()
+    with app.app_context():
+        if not _use_postgres():
+            # Local SQLite: create db file if missing
+            import sqlite3 as _sq
+            if not os.path.exists(app.config['DATABASE']):
+                os.makedirs(os.path.dirname(app.config['DATABASE']), exist_ok=True)
+        try:
+            init_db()
+        except Exception as e:
+            print(f"Warning: init_db failed: {e}")
     app.run(debug=True)
