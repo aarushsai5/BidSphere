@@ -400,11 +400,8 @@ def create_auction():
         if image_file and image_file.filename:
             import werkzeug.utils
             filename = werkzeug.utils.secure_filename(image_file.filename)
-            # Always convert to base64 data URI — works on Vercel and locally
-            # No CDN/Blob access issues, stored directly in Neon PostgreSQL
             image_url = process_image_to_datauri(image_file, filename)
             if not image_url:
-                # Fallback: save locally if base64 fails
                 if not os.environ.get('VERCEL'):
                     upload_path = app.config['UPLOAD_FOLDER']
                     os.makedirs(upload_path, exist_ok=True)
