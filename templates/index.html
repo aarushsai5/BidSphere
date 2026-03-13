@@ -133,7 +133,7 @@
             data-aos-delay="{{ loop.index0 * 100 % 400 }}">
             <div class="card-image">
                 {% if auction.image %}
-                {% if auction.image.startswith('http') %}
+                {% if auction.image.startswith('http') or auction.image.startswith('data:') %}
                 <img src="{{ auction.image }}" alt="{{ auction.title }}">
                 {% else %}
                 <img src="{{ url_for('static', filename='images/' + auction.image) }}" alt="{{ auction.title }}">

@@ -21,7 +21,7 @@
             style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--gray-200); background: var(--gray-50); display: flex; align-items: center; justify-content: center; min-height: 400px; position: relative;">
             <span class="status-badge status-{{ auction.status }}">{{ auction.status | capitalize }}</span>
             {% if auction.image %}
-            {% if auction.image.startswith('http') %}
+            {% if auction.image.startswith('http') or auction.image.startswith('data:') %}
             <img src="{{ auction.image }}" alt="{{ auction.title }}"
                 style="width: 100%; height: 100%; object-fit: contain;">
             {% else %}

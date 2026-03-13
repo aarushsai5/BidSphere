@@ -163,44 +163,51 @@ def init_db():
 # Image upload helpers
 # ─────────────────────────────────────────────────────────────
 
-def upload_image_to_blob(image_file, filename):
-    """Upload an image file to Vercel Blob and return the public URL."""
-    token = os.environ.get('BLOB_READ_WRITE_TOKEN')
-    if not token:
-        print("Upload Error: BLOB_READ_WRITE_TOKEN not set")
-        return ''
+def process_image_to_datauri(image_file, filename, max_size=800, quality=80):
+    """
+    Convert an uploaded image to a compressed base64 data URI.
+    Stored directly in the DB — no CDN, no Blob access issues.
+    Resizes to max_size x max_size and compresses as JPEG.
+    """
     try:
-        image_file.seek(0)
-        image_bytes = image_file.read()
-        from urllib.parse import quote
-        safe_path = quote(filename)
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'x-vercel-blob-add-random-suffix': 'true',
-            'x-vercel-blob-access': 'public',
-            'Content-Type': _guess_content_type(filename),
-        }
-        upload_res = requests.put(
-            f"https://blob.vercel-storage.com/{safe_path}",
-            headers=headers,
-            data=image_bytes,
-            timeout=30,
-        )
-        if upload_res.status_code == 200:
-            url = upload_res.json().get('url', '')
-            print(f"Upload OK: {url}")
-            return url
-        else:
-            print(f"Upload failed: {upload_res.status_code} — {upload_res.text[:300]}")
-    except Exception as e:
-        print(f"Upload Error: {e}")
-    return ''
+        import base64, io
+        from PIL import Image as PILImage
 
-def _guess_content_type(filename):
-    ext = filename.rsplit('.', 1)[-1].lower()
-    types = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-             'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml'}
-    return types.get(ext, 'application/octet-stream')
+        image_file.seek(0)
+        img = PILImage.open(image_file)
+
+        # Convert RGBA/palette to RGB for JPEG
+        if img.mode in ('RGBA', 'P', 'LA'):
+            background = PILImage.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+            img = background
+        elif img.mode != 'RGB':
+            img = img.convert('RGB')
+
+        # Resize maintaining aspect ratio
+        img.thumbnail((max_size, max_size), PILImage.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=quality, optimize=True)
+        buf.seek(0)
+        b64 = base64.b64encode(buf.read()).decode('utf-8')
+        return f"data:image/jpeg;base64,{b64}"
+    except ImportError:
+        # Pillow not installed — fall back to raw base64
+        import base64
+        image_file.seek(0)
+        raw = image_file.read()
+        ext = filename.rsplit('.', 1)[-1].lower()
+        mime = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+                'gif': 'image/gif', 'webp': 'image/webp'}.get(ext, 'image/jpeg')
+        b64 = base64.b64encode(raw).decode('utf-8')
+        return f"data:{mime};base64,{b64}"
+    except Exception as e:
+        print(f"Image processing error: {e}")
+        return ''
+
 
 # ─────────────────────────────────────────────────────────────
 # Auth helpers
@@ -393,16 +400,17 @@ def create_auction():
         if image_file and image_file.filename:
             import werkzeug.utils
             filename = werkzeug.utils.secure_filename(image_file.filename)
-            if os.environ.get('VERCEL'):
-                image_url = upload_image_to_blob(image_file, filename)
-            else:
-                # Local dev: save to static/images/
-                upload_path = app.config['UPLOAD_FOLDER']
-                os.makedirs(upload_path, exist_ok=True)
-                save_path = os.path.join(upload_path, filename)
-                image_file.seek(0)
-                image_file.save(save_path)
-                image_url = filename
+            # Always convert to base64 data URI — works on Vercel and locally
+            # No CDN/Blob access issues, stored directly in Neon PostgreSQL
+            image_url = process_image_to_datauri(image_file, filename)
+            if not image_url:
+                # Fallback: save locally if base64 fails
+                if not os.environ.get('VERCEL'):
+                    upload_path = app.config['UPLOAD_FOLDER']
+                    os.makedirs(upload_path, exist_ok=True)
+                    image_file.seek(0)
+                    image_file.save(os.path.join(upload_path, filename))
+                    image_url = filename
 
         if not start_time:
             from datetime import datetime

@@ -86,7 +86,7 @@
                         <!-- Thumbnail -->
                         <td style="padding: 12px 24px;">
                             {% if auction.image %}
-                                {% if auction.image.startswith('http') %}
+                                {% if auction.image.startswith('http') or auction.image.startswith('data:') %}
                                 <img src="{{ auction.image }}" alt="{{ auction.title }}"
                                     style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--gray-200);">
                                 {% else %}
