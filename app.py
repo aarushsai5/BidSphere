@@ -263,37 +263,6 @@ def format_date(value):
 # Debug route
 # ─────────────────────────────────────────────────────────────
 
-@app.route('/debug/db-status')
-def db_status():
-    status = {'using_postgres': _use_postgres()}
-    try:
-        count = db_execute("SELECT COUNT(*) as c FROM auctions").fetchone()
-        status['auction_count'] = count['c'] if count else 0
-        ucount = db_execute("SELECT COUNT(*) as c FROM users").fetchone()
-        status['user_count'] = ucount['c'] if ucount else 0
-    except Exception as e:
-        status['error'] = str(e)
-    return status
-
-@app.route('/debug/image-check')
-def image_check():
-    """Diagnostic route to check the last 5 auctions' image data."""
-    try:
-        rows = db_execute("SELECT id, title, image FROM auctions ORDER BY id DESC LIMIT 5").fetchall()
-        results = []
-        for r in rows:
-            img = r['image'] or ''
-            results.append({
-                'id': r['id'],
-                'title': r['title'],
-                'image_data_length': len(img),
-                'image_prefix': img[:50] + '...' if len(img) > 50 else img,
-                'is_base64': img.startswith('data:image')
-            })
-        return {'last_5_auctions': results, 'postgres': _use_postgres()}
-    except Exception as e:
-        return {'error': str(e)}
-
 # ─────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────
@@ -425,7 +394,6 @@ def create_auction():
         if image_base64 and image_base64.startswith('data:image'):
             # Use client-side compressed image
             image_url = image_base64
-            print(f"DEBUG: Using client-side base64 image. Length: {len(image_url)}")
         else:
             # Fallback to server-side processing if no client-side base64
             image_file = request.files.get('image')
