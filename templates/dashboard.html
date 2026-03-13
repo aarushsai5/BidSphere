@@ -108,7 +108,7 @@
                         <td style="padding: 20px 24px;">
                             <div style="font-weight: 700; color: var(--gray-900); font-size: 1.05rem; margin-bottom: 4px;">
                                 {{ auction.title }}</div>
-                            <div style="font-size: 0.85rem; color: var(--gray-500);">Ends: {{ auction.end_time.split('T')[0] }}</div>
+                            <div style="font-size: 0.85rem; color: var(--gray-500);">Ends: {{ auction.end_time | format_date }}</div>
                         </td>
 
                         <!-- Status Cell -->

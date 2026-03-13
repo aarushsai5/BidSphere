@@ -155,7 +155,7 @@
                                 {% endif %}
                             </td>
                             <td style="padding: 16px 24px; font-size: 0.85rem; color: var(--gray-600);">
-                                {{ u.created_at.split(' ')[0] if u.created_at else 'N/A' }}
+                                {{ u.created_at | format_date if u.created_at else 'N/A' }}
                             </td>
                         </tr>
                         {% endfor %}

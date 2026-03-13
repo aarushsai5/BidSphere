@@ -3,10 +3,30 @@ import requests
 import os
 import time
 from werkzeug.security import generate_password_hash, check_password_hash
+
+# Load .env file for local development (no-op in production)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Neon sends `channel_binding=require` in the URL which psycopg2 doesn't support
+# Strip it out so psycopg2 can connect cleanly (SSL is still enforced via sslmode=require)
+_raw_db_url = app.config.get('DATABASE_URL', '')
+if _raw_db_url and 'channel_binding' in _raw_db_url:
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed = urlparse(_raw_db_url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    params.pop('channel_binding', None)
+    new_query = urlencode({k: v[0] for k, v in params.items()})
+    app.config['DATABASE_URL'] = urlunparse(parsed._replace(query=new_query))
+
 
 # ─────────────────────────────────────────────────────────────
 # Database — PostgreSQL via psycopg2
@@ -213,6 +233,20 @@ def inject_user():
 @app.template_filter('format_ist')
 def format_ist(value):
     return value
+
+@app.template_filter('format_date')
+def format_date(value):
+    """Return YYYY-MM-DD date string from a datetime object or ISO string safely."""
+    if value is None:
+        return ''
+    try:
+        # PostgreSQL returns actual datetime/date objects
+        if hasattr(value, 'strftime'):
+            return value.strftime('%Y-%m-%d')
+        # SQLite returns strings like '2026-03-20T22:30' or '2026-03-20 22:30:00'
+        return str(value).split('T')[0].split(' ')[0]
+    except Exception:
+        return str(value)
 
 # ─────────────────────────────────────────────────────────────
 # Debug route
