@@ -271,6 +271,25 @@ def db_status():
         status['error'] = str(e)
     return status
 
+@app.route('/debug/image-check')
+def image_check():
+    """Diagnostic route to check the last 5 auctions' image data."""
+    try:
+        rows = db_execute("SELECT id, title, image FROM auctions ORDER BY id DESC LIMIT 5").fetchall()
+        results = []
+        for r in rows:
+            img = r['image'] or ''
+            results.append({
+                'id': r['id'],
+                'title': r['title'],
+                'image_data_length': len(img),
+                'image_prefix': img[:50] + '...' if len(img) > 50 else img,
+                'is_base64': img.startswith('data:image')
+            })
+        return {'last_5_auctions': results, 'postgres': _use_postgres()}
+    except Exception as e:
+        return {'error': str(e)}
+
 # ─────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────
@@ -395,19 +414,28 @@ def create_auction():
         full_desc = f"**Category:** {category}\n**Condition:** {condition}\n**Condition Notes:** {notes}\n\n{description}"
 
         # ── Image handling ──────────────────────────────────
-        image_file = request.files.get('image')
+        # Check for client-side compressed base64 first
+        image_base64 = request.form.get('image_base64')
         image_url = ''
-        if image_file and image_file.filename:
-            import werkzeug.utils
-            filename = werkzeug.utils.secure_filename(image_file.filename)
-            image_url = process_image_to_datauri(image_file, filename)
-            if not image_url:
-                if not os.environ.get('VERCEL'):
-                    upload_path = app.config['UPLOAD_FOLDER']
-                    os.makedirs(upload_path, exist_ok=True)
-                    image_file.seek(0)
-                    image_file.save(os.path.join(upload_path, filename))
-                    image_url = filename
+        
+        if image_base64 and image_base64.startswith('data:image'):
+            # Use client-side compressed image
+            image_url = image_base64
+            print(f"DEBUG: Using client-side base64 image. Length: {len(image_url)}")
+        else:
+            # Fallback to server-side processing if no client-side base64
+            image_file = request.files.get('image')
+            if image_file and image_file.filename:
+                import werkzeug.utils
+                filename = werkzeug.utils.secure_filename(image_file.filename)
+                image_url = process_image_to_datauri(image_file, filename)
+                if not image_url:
+                    if not os.environ.get('VERCEL'):
+                        upload_path = app.config['UPLOAD_FOLDER']
+                        os.makedirs(upload_path, exist_ok=True)
+                        image_file.seek(0)
+                        image_file.save(os.path.join(upload_path, filename))
+                        image_url = filename
 
         if not start_time:
             from datetime import datetime

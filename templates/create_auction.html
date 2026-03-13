@@ -57,7 +57,15 @@
                         <p style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Click to add, or drag &
                             drop</p>
                         <p style="color: var(--gray-500); font-size: 0.85rem;">PNG, JPG up to 10MB</p>
-                        <input type="file" id="image" name="image" accept="image/*" style="display: none;">
+                        <input type="file" id="image" accept="image/*" style="display: none;">
+                        <!-- Hidden input to store the compressed base64 string -->
+                        <input type="hidden" id="image_base64" name="image_base64">
+                        
+                        <div id="image-preview-container" style="display: none; margin-top: 16px;">
+                            <img id="image-preview" src="#" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: var(--radius); border: 2px solid var(--primary);">
+                            <p style="margin-top: 8px; font-size: 0.8rem; color: var(--success); font-weight: 600;">✓ Image compressed & ready</p>
+                        </div>
+
                         <!-- Note: Since this is an MVP UI demo, we hook up multiple files visually but backend only takes 1 currently -->
                         <div style="margin-top: 20px;">
                             <button type="button" class="btn btn-outline btn-sm"
@@ -201,7 +209,7 @@
 
             <div style="display: flex; gap: 16px; margin-top: 30px;">
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline" style="flex: 1;">Cancel</a>
-                <button type="submit" class="btn btn-primary" style="flex: 2; font-size: 1.1rem;">Create
+                <button type="submit" class="btn btn-primary" id="submit-btn" style="flex: 2; font-size: 1.1rem;">Create
                     Auction</button>
             </div>
         </div>
@@ -211,6 +219,62 @@
 
 {% block scripts %}
 <script>
+    // Image Compression with Canvas
+    const imageInput = document.getElementById('image');
+    const base64Input = document.getElementById('image_base64');
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImg = document.getElementById('image-preview');
+    const submitBtn = document.getElementById('submit-btn');
+
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Disable submit while processing
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing Image...';
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const maxSize = 800;
+
+                if (width > height) {
+                    if (width > maxSize) {
+                        height *= maxSize / width;
+                        width = maxSize;
+                    }
+                } else {
+                    if (height > maxSize) {
+                        width *= maxSize / height;
+                        height = maxSize;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                base64Input.value = dataUrl;
+                
+                previewImg.src = dataUrl;
+                previewContainer.style.display = 'block';
+                
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Auction';
+                console.log('Image compressed! Length:', dataUrl.length);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
     // Fee Calculator
     const priceInput = document.getElementById('starting_price');
     const fvfAmt = document.getElementById('fvf-amt');
