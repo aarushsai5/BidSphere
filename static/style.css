@@ -1315,31 +1315,31 @@ ul {
     }
 }
 
-/* --- Verified Seller Badge --- */
+/* --- Verified Seller Badge (Premium Instagram Style) --- */
 .verified-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    width: 18px;
+    height: 18px;
+    background: #0095f6; /* Instagram Blue */
     color: #fff;
     border-radius: 50%;
-    font-size: 0.7rem;
-    font-weight: 800;
+    font-size: 0.65rem;
+    font-weight: 900;
     margin-left: 6px;
     vertical-align: middle;
     position: relative;
+    box-shadow: 0 0 0 2px rgba(0, 149, 246, 0.15);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     cursor: help;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
-    transition: all 0.3s ease;
-    line-height: 1;
-    text-decoration: none;
+    border: 1.5px solid #fff;
 }
 
 .verified-badge:hover {
-    transform: scale(1.2);
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.6);
+    transform: scale(1.2) rotate(10deg);
+    box-shadow: 0 0 0 4px rgba(0, 149, 246, 0.25);
+    z-index: 10;
 }
 
 /* Tooltip on hover */
@@ -1394,12 +1394,14 @@ ul {
 }
 
 [data-theme="dark"] .verified-badge {
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.6);
+    box-shadow: 0 0 0 2px rgba(0, 149, 246, 0.3);
+    border-color: #1a1a1e;
 }
 
 [data-theme="dark"] .verified-badge::after {
-    background: var(--gray-100);
-    color: var(--gray-900);
+    background: var(--gray-800);
+    color: var(--gray-100);
+    border: 1px solid var(--gray-700);
 }
 
 /* --- Enhanced Filter Section --- */
