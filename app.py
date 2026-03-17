@@ -189,6 +189,42 @@ def init_db():
         print("DB initialized successfully.")
 
 # ─────────────────────────────────────────────────────────────
+# Auto-migration for Vercel (serverless cold-start)
+# ─────────────────────────────────────────────────────────────
+
+_migration_done = False
+
+def _run_migrations():
+    """Ensure is_verified column exists. Safe to call repeatedly."""
+    global _migration_done
+    if _migration_done:
+        return
+    try:
+        if _use_postgres():
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='users' AND column_name='is_verified'
+                    ) THEN
+                        ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT FALSE;
+                    END IF;
+                END $$;
+            """)
+            conn.commit()
+        _migration_done = True
+    except Exception as e:
+        print(f"Migration note: {e}")
+        _migration_done = True  # Don't retry every request
+
+@app.before_request
+def ensure_migrations():
+    _run_migrations()
+
+# ─────────────────────────────────────────────────────────────
 # Image upload helpers
 # ─────────────────────────────────────────────────────────────
 
@@ -253,30 +289,36 @@ def get_seller_completed_trades(seller_id):
 
 def check_and_update_verification(seller_id):
     """If seller has 10+ completed trades, mark them as verified."""
-    user = db_execute('SELECT is_verified FROM users WHERE id = ?', (seller_id,)).fetchone()
-    if user and not user['is_verified']:
-        count = get_seller_completed_trades(seller_id)
-        if count >= 10:
-            db_execute('UPDATE users SET is_verified = ? WHERE id = ?', (True, seller_id))
-            db_commit()
-            return True
-    return user['is_verified'] if user else False
+    try:
+        user = db_execute('SELECT is_verified FROM users WHERE id = ?', (seller_id,)).fetchone()
+        if user and not user.get('is_verified', False):
+            count = get_seller_completed_trades(seller_id)
+            if count >= 10:
+                db_execute('UPDATE users SET is_verified = ? WHERE id = ?', (True, seller_id))
+                db_commit()
+                return True
+        return user.get('is_verified', False) if user else False
+    except Exception:
+        return False
 
 def is_seller_verified(seller_id):
     """Check if a seller is verified (reads from DB, auto-upgrades if needed)."""
-    user = db_execute('SELECT is_verified, role FROM users WHERE id = ?', (seller_id,)).fetchone()
-    if not user:
-        return False
-    if user['is_verified']:
-        return True
-    # Auto-check: maybe they just hit 10 trades
-    if user['role'] == 'seller':
-        count = get_seller_completed_trades(seller_id)
-        if count >= 10:
-            db_execute('UPDATE users SET is_verified = ? WHERE id = ?', (True, seller_id))
-            db_commit()
+    try:
+        user = db_execute('SELECT is_verified, role FROM users WHERE id = ?', (seller_id,)).fetchone()
+        if not user:
+            return False
+        if user.get('is_verified', False):
             return True
-    return False
+        # Auto-check: maybe they just hit 10 trades
+        if user['role'] == 'seller':
+            count = get_seller_completed_trades(seller_id)
+            if count >= 10:
+                db_execute('UPDATE users SET is_verified = ? WHERE id = ?', (True, seller_id))
+                db_commit()
+                return True
+        return False
+    except Exception:
+        return False
 
 # ─────────────────────────────────────────────────────────────
 # Auth helpers
@@ -300,7 +342,7 @@ def load_logged_in_user():
         if row:
             g.user = User(id=row['id'], username=row['username'],
                           email=row['email'], role=row['role'],
-                          is_verified=bool(row['is_verified']))
+                          is_verified=bool(row.get('is_verified', False) if hasattr(row, 'get') else (row['is_verified'] if 'is_verified' in row.keys() else False)))
         else:
             g.user = None
 
@@ -353,11 +395,14 @@ def index():
 
     auctions = []
     for row in auctions_rows:
-        seller = db_execute('SELECT username, is_verified FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
+        try:
+            seller = db_execute('SELECT username, is_verified FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
+        except Exception:
+            seller = db_execute('SELECT username FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
         bids = db_execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
         auc = dict(row)
         auc['seller_name'] = seller['username'] if seller else 'Unknown'
-        auc['seller_verified'] = bool(seller['is_verified']) if seller else False
+        auc['seller_verified'] = bool(seller.get('is_verified', False)) if seller and hasattr(seller, 'get') else False
         auc['bid_count'] = bids['c'] if bids else 0
         auc['highest_bid'] = bids['m'] if bids['m'] else None
         auctions.append(auc)
@@ -544,9 +589,12 @@ def auction_detail(auction_id):
         return redirect(url_for('index'))
 
     auction = dict(row)
-    seller = db_execute('SELECT username, is_verified FROM users WHERE id = ?', (auction['seller_id'],)).fetchone()
+    try:
+        seller = db_execute('SELECT username, is_verified FROM users WHERE id = ?', (auction['seller_id'],)).fetchone()
+    except Exception:
+        seller = db_execute('SELECT username FROM users WHERE id = ?', (auction['seller_id'],)).fetchone()
     auction['seller_name'] = seller['username'] if seller else 'Unknown'
-    auction['seller_verified'] = bool(seller['is_verified']) if seller else False
+    auction['seller_verified'] = bool(seller.get('is_verified', False)) if seller and hasattr(seller, 'get') else False
 
     bids = db_execute('''
         SELECT b.amount, b.created_at, u.username as bidder_name
@@ -635,17 +683,28 @@ def admin_panel():
     stats['total_auctions'] = db_execute('SELECT COUNT(*) as c FROM auctions').fetchone()['c']
     stats['active_auctions'] = db_execute("SELECT COUNT(*) as c FROM auctions WHERE status = 'live'").fetchone()['c']
     stats['total_bids'] = db_execute('SELECT COUNT(*) as c FROM bids').fetchone()['c']
-    stats['verified_sellers'] = db_execute("SELECT COUNT(*) as c FROM users WHERE is_verified = true AND role = 'seller'").fetchone()['c'] if _use_postgres() else db_execute("SELECT COUNT(*) as c FROM users WHERE is_verified = 1 AND role = 'seller'").fetchone()['c']
+    try:
+        stats['verified_sellers'] = db_execute("SELECT COUNT(*) as c FROM users WHERE is_verified = true AND role = 'seller'").fetchone()['c'] if _use_postgres() else db_execute("SELECT COUNT(*) as c FROM users WHERE is_verified = 1 AND role = 'seller'").fetchone()['c']
+    except Exception:
+        stats['verified_sellers'] = 0
 
     users = db_execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
 
     auctions = []
-    rows = db_execute('''
-        SELECT a.*, u.username as seller_name, u.is_verified as seller_verified
-        FROM auctions a
-        JOIN users u ON a.seller_id = u.id
-        ORDER BY a.created_at DESC
-    ''').fetchall()
+    try:
+        rows = db_execute('''
+            SELECT a.*, u.username as seller_name, u.is_verified as seller_verified
+            FROM auctions a
+            JOIN users u ON a.seller_id = u.id
+            ORDER BY a.created_at DESC
+        ''').fetchall()
+    except Exception:
+        rows = db_execute('''
+            SELECT a.*, u.username as seller_name
+            FROM auctions a
+            JOIN users u ON a.seller_id = u.id
+            ORDER BY a.created_at DESC
+        ''').fetchall()
     for row in rows:
         bids = db_execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?',
                           (row['id'],)).fetchone()
