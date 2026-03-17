@@ -64,8 +64,12 @@
                 You must <a href="{{ url_for('login') }}" style="font-weight: 700; text-decoration: underline;">sign
                     in</a> to place a bid.
             </div>
-            {% elif current_user.role == 'seller' %}
-            <div class="alert alert-info">Sellers cannot place bids.</div>
+            {% elif current_user.role == 'admin' %}
+            <div class="alert alert-info">Admins cannot place bids.</div>
+            {% elif current_user.id == auction.seller_id %}
+            <div class="alert alert-info" style="background: rgba(99, 102, 241, 0.08); color: var(--primary); border-color: rgba(99, 102, 241, 0.15);">
+                📦 This is your auction. You cannot bid on your own items.
+            </div>
             {% else %}
             <form action="{{ url_for('place_bid', auction_id=auction.id) }}" method="POST" style="margin-bottom: 30px;">
                 <label for="amount" class="form-label">Your Maximum Bid (₹)</label>
