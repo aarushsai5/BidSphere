@@ -616,15 +616,6 @@ def place_bid(auction_id):
         flash('You must be logged in to place a bid.', 'danger')
         return redirect(url_for('login'))
 
-    if g.user.role == 'admin':
-        flash('Admins cannot place bids.', 'danger')
-        return redirect(url_for('index'))
-
-    # Prevent bidding on your own auction
-    auction_check = db_execute('SELECT seller_id FROM auctions WHERE id = ?', (auction_id,)).fetchone()
-    if auction_check and auction_check['seller_id'] == g.user.id:
-        flash('You cannot bid on your own auction.', 'danger')
-        return redirect(url_for('auction_detail', auction_id=auction_id))
 
     amount = float(request.form.get('amount', 0))
 
@@ -632,6 +623,11 @@ def place_bid(auction_id):
     if not auction:
         flash('Auction not found.', 'danger')
         return redirect(url_for('index'))
+
+    # Sellers can bid on OTHER people's auctions, but not their own
+    if auction['seller_id'] == g.user.id:
+        flash('You cannot bid on your own auction.', 'danger')
+        return redirect(url_for('auction_detail', auction_id=auction_id))
 
     if auction['status'] != 'live':
         flash('This auction is not currently active.', 'danger')
