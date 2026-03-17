@@ -64,27 +64,27 @@
             <p style="color: var(--gray-500); margin-top: 8px;">Find exactly what you are looking for.</p>
         </div>
         <div class="categories-grid">
-            <a href="{{ url_for('index') }}?q=antique" class="category-card">
+            <a href="{{ url_for('index') }}?q=antique#results" class="category-card {% if search == 'antique' %}category-active{% endif %}">
                 <span class="category-icon">🏺</span>
                 <h3 class="category-name">Antiques</h3>
             </a>
-            <a href="{{ url_for('index') }}?q=car" class="category-card">
+            <a href="{{ url_for('index') }}?q=car#results" class="category-card {% if search == 'car' %}category-active{% endif %}">
                 <span class="category-icon">🚗</span>
                 <h3 class="category-name">Vehicles</h3>
             </a>
-            <a href="{{ url_for('index') }}?q=art" class="category-card">
+            <a href="{{ url_for('index') }}?q=art#results" class="category-card {% if search == 'art' %}category-active{% endif %}">
                 <span class="category-icon">🎨</span>
                 <h3 class="category-name">Fine Art</h3>
             </a>
-            <a href="{{ url_for('index') }}?q=jewelry" class="category-card">
+            <a href="{{ url_for('index') }}?q=jewelry#results" class="category-card {% if search == 'jewelry' %}category-active{% endif %}">
                 <span class="category-icon">💎</span>
                 <h3 class="category-name">Jewelry</h3>
             </a>
-            <a href="{{ url_for('index') }}?q=electronics" class="category-card">
+            <a href="{{ url_for('index') }}?q=electronics#results" class="category-card {% if search == 'electronics' %}category-active{% endif %}">
                 <span class="category-icon">💻</span>
                 <h3 class="category-name">Electronics</h3>
             </a>
-            <a href="{{ url_for('index') }}" class="category-card"
+            <a href="{{ url_for('index') }}#results" class="category-card {% if not search %}category-active{% endif %}"
                 style="background: var(--gradient-secondary); color: white; border: none;">
                 <span class="category-icon">✨</span>
                 <h3 class="category-name" style="color: white;">View All</h3>
@@ -92,29 +92,69 @@
         </div>
     </section>
 
-    <!-- Filters -->
-    <section class="filters" data-aos="fade-up">
-        <form method="GET" action="{{ url_for('index') }}" class="filter-form">
-            <div class="filter-group">
-                <input type="text" name="q" placeholder="What are you looking for?" value="{{ search }}" class="input"
-                    style="flex: 2;">
-                <select name="status" class="input select" style="flex: 1;">
-                    <option value="all" {% if status_filter=='all' %}selected{% endif %}>All Status</option>
-                    <option value="upcoming" {% if status_filter=='upcoming' %}selected{% endif %}>Upcoming</option>
-                    <option value="live" {% if status_filter=='live' %}selected{% endif %}>Live Now</option>
-                    <option value="closed" {% if status_filter=='closed' %}selected{% endif %}>Closed</option>
-                </select>
-                <button type="submit" class="btn btn-primary" style="padding: 12px 32px;"><svg width="20" height="20"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" style="margin-right:8px;">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg> Search</button>
+    <!-- Enhanced Filters -->
+    <section class="filters-section" data-aos="fade-up">
+        <div class="filters-card">
+            <div class="filters-header">
+                <div class="filters-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span>Filter & Search</span>
+                </div>
+                {% if search or status_filter != 'all' %}
+                <a href="{{ url_for('index') }}#results" class="filters-clear">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Clear All
+                </a>
+                {% endif %}
             </div>
-        </form>
+            <form method="GET" action="{{ url_for('index') }}#results" class="filter-form">
+                <div class="filter-group">
+                    <div class="filter-input-wrap">
+                        <svg class="filter-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" name="q" placeholder="Search auctions by name, category..." value="{{ search }}" class="input"
+                            style="padding-left: 44px; flex: 2;">
+                    </div>
+                    <select name="status" class="input select" style="flex: 0.8;">
+                        <option value="all" {% if status_filter=='all' %}selected{% endif %}>All Status</option>
+                        <option value="upcoming" {% if status_filter=='upcoming' %}selected{% endif %}>📅 Upcoming</option>
+                        <option value="live" {% if status_filter=='live' %}selected{% endif %}>🔴 Live Now</option>
+                        <option value="closed" {% if status_filter=='closed' %}selected{% endif %}>✓ Closed</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary" style="padding: 12px 32px; flex-shrink: 0;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg> Search
+                    </button>
+                </div>
+            </form>
+            {% if search %}
+            <div class="filters-active-tags">
+                <span class="filter-tag">
+                    🔍 "{{ search }}"
+                    <a href="{{ url_for('index') }}{% if status_filter != 'all' %}?status={{ status_filter }}{% endif %}#results" class="filter-tag-remove">×</a>
+                </span>
+                {% if status_filter != 'all' %}
+                <span class="filter-tag">
+                    {{ '🔴' if status_filter == 'live' else ('📅' if status_filter == 'upcoming' else '✓') }} {{ status_filter | capitalize }}
+                    <a href="{{ url_for('index') }}?q={{ search }}#results" class="filter-tag-remove">×</a>
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
     </section>
 
     <!-- Auction Grid -->
+    <div id="results"></div>
     {% if auctions %}
     <div class="section-title" data-aos="fade-right"
         style="margin-top: 40px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
