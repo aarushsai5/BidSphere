@@ -1314,3 +1314,90 @@ ul {
         text-align: center;
     }
 }
+
+/* --- Verified Seller Badge --- */
+.verified-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-left: 6px;
+    vertical-align: middle;
+    position: relative;
+    cursor: help;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    transition: all 0.3s ease;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.verified-badge:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.6);
+}
+
+/* Tooltip on hover */
+.verified-badge::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.8);
+    background: var(--gray-900);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.verified-badge:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+/* Subtle pulse animation for verified badge */
+@keyframes verifiedPulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4); }
+    50% { box-shadow: 0 2px 16px rgba(59, 130, 246, 0.7); }
+}
+
+.verified-badge {
+    animation: verifiedPulse 3s ease-in-out infinite;
+}
+
+/* Large verified badge for dashboard */
+.verified-badge-lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.15));
+    color: #2563eb;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    margin-left: 8px;
+}
+
+[data-theme="dark"] .verified-badge {
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.6);
+}
+
+[data-theme="dark"] .verified-badge::after {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}

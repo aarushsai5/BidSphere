@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     password    TEXT    NOT NULL,
     role        TEXT    NOT NULL DEFAULT 'bidder',   -- admin | seller | bidder
     is_banned   BOOLEAN NOT NULL DEFAULT FALSE,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

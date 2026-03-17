@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS users (
     password    TEXT    NOT NULL,
     role        TEXT    NOT NULL DEFAULT 'bidder',
     is_banned   INTEGER NOT NULL DEFAULT 0,
+    is_verified INTEGER NOT NULL DEFAULT 0,
     created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS auctions (
@@ -161,6 +162,30 @@ def init_db():
         else:
             conn.executescript(_SQLITE_SCHEMA)
             conn.commit()
+        # Auto-add is_verified column if missing (migration for existing DBs)
+        try:
+            if _use_postgres():
+                cur = conn.cursor()
+                cur.execute("""
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name='users' AND column_name='is_verified'
+                        ) THEN
+                            ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT FALSE;
+                        END IF;
+                    END $$;
+                """)
+                conn.commit()
+            else:
+                # SQLite: check if column exists
+                cols = [row[1] for row in conn.execute('PRAGMA table_info(users)').fetchall()]
+                if 'is_verified' not in cols:
+                    conn.execute('ALTER TABLE users ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 0')
+                    conn.commit()
+        except Exception as e:
+            print(f"Migration note (is_verified): {e}")
         print("DB initialized successfully.")
 
 # ─────────────────────────────────────────────────────────────
@@ -214,15 +239,56 @@ def process_image_to_datauri(image_file, filename, max_size=800, quality=80):
 
 
 # ─────────────────────────────────────────────────────────────
+# Verified Seller helpers
+# ─────────────────────────────────────────────────────────────
+
+def get_seller_completed_trades(seller_id):
+    """Count completed transactions for auctions owned by a seller."""
+    row = db_execute('''
+        SELECT COUNT(*) as c FROM transactions t
+        JOIN auctions a ON t.auction_id = a.id
+        WHERE a.seller_id = ? AND t.status = 'completed'
+    ''', (seller_id,)).fetchone()
+    return row['c'] if row else 0
+
+def check_and_update_verification(seller_id):
+    """If seller has 10+ completed trades, mark them as verified."""
+    user = db_execute('SELECT is_verified FROM users WHERE id = ?', (seller_id,)).fetchone()
+    if user and not user['is_verified']:
+        count = get_seller_completed_trades(seller_id)
+        if count >= 10:
+            db_execute('UPDATE users SET is_verified = ? WHERE id = ?', (True, seller_id))
+            db_commit()
+            return True
+    return user['is_verified'] if user else False
+
+def is_seller_verified(seller_id):
+    """Check if a seller is verified (reads from DB, auto-upgrades if needed)."""
+    user = db_execute('SELECT is_verified, role FROM users WHERE id = ?', (seller_id,)).fetchone()
+    if not user:
+        return False
+    if user['is_verified']:
+        return True
+    # Auto-check: maybe they just hit 10 trades
+    if user['role'] == 'seller':
+        count = get_seller_completed_trades(seller_id)
+        if count >= 10:
+            db_execute('UPDATE users SET is_verified = ? WHERE id = ?', (True, seller_id))
+            db_commit()
+            return True
+    return False
+
+# ─────────────────────────────────────────────────────────────
 # Auth helpers
 # ─────────────────────────────────────────────────────────────
 
 class User:
-    def __init__(self, id, username, email, role):
+    def __init__(self, id, username, email, role, is_verified=False):
         self.id = id
         self.username = username
         self.email = email
         self.role = role
+        self.is_verified = is_verified
 
 @app.before_request
 def load_logged_in_user():
@@ -233,7 +299,8 @@ def load_logged_in_user():
         row = db_execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         if row:
             g.user = User(id=row['id'], username=row['username'],
-                          email=row['email'], role=row['role'])
+                          email=row['email'], role=row['role'],
+                          is_verified=bool(row['is_verified']))
         else:
             g.user = None
 
@@ -286,10 +353,11 @@ def index():
 
     auctions = []
     for row in auctions_rows:
-        seller = db_execute('SELECT username FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
+        seller = db_execute('SELECT username, is_verified FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
         bids = db_execute('SELECT COUNT(*) as c, MAX(amount) as m FROM bids WHERE auction_id = ?', (row['id'],)).fetchone()
         auc = dict(row)
         auc['seller_name'] = seller['username'] if seller else 'Unknown'
+        auc['seller_verified'] = bool(seller['is_verified']) if seller else False
         auc['bid_count'] = bids['c'] if bids else 0
         auc['highest_bid'] = bids['m'] if bids['m'] else None
         auctions.append(auc)
@@ -476,8 +544,9 @@ def auction_detail(auction_id):
         return redirect(url_for('index'))
 
     auction = dict(row)
-    seller = db_execute('SELECT username FROM users WHERE id = ?', (auction['seller_id'],)).fetchone()
+    seller = db_execute('SELECT username, is_verified FROM users WHERE id = ?', (auction['seller_id'],)).fetchone()
     auction['seller_name'] = seller['username'] if seller else 'Unknown'
+    auction['seller_verified'] = bool(seller['is_verified']) if seller else False
 
     bids = db_execute('''
         SELECT b.amount, b.created_at, u.username as bidder_name
@@ -566,12 +635,13 @@ def admin_panel():
     stats['total_auctions'] = db_execute('SELECT COUNT(*) as c FROM auctions').fetchone()['c']
     stats['active_auctions'] = db_execute("SELECT COUNT(*) as c FROM auctions WHERE status = 'live'").fetchone()['c']
     stats['total_bids'] = db_execute('SELECT COUNT(*) as c FROM bids').fetchone()['c']
+    stats['verified_sellers'] = db_execute("SELECT COUNT(*) as c FROM users WHERE is_verified = true AND role = 'seller'").fetchone()['c'] if _use_postgres() else db_execute("SELECT COUNT(*) as c FROM users WHERE is_verified = 1 AND role = 'seller'").fetchone()['c']
 
     users = db_execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
 
     auctions = []
     rows = db_execute('''
-        SELECT a.*, u.username as seller_name
+        SELECT a.*, u.username as seller_name, u.is_verified as seller_verified
         FROM auctions a
         JOIN users u ON a.seller_id = u.id
         ORDER BY a.created_at DESC

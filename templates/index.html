@@ -153,7 +153,7 @@
             <div class="card-body">
                 <h3 class="card-title">{{ auction.title }}</h3>
                 <p class="card-seller">listed by <span style="font-weight: 600; color: var(--secondary);">{{
-                        auction.seller_name }}</span></p>
+                        auction.seller_name }}</span>{% if auction.seller_verified %}<span class="verified-badge" title="Verified Seller — 10+ successful trades">✓</span>{% endif %}</p>
                 <div class="card-info">
                     <div class="card-price">
                         <span class="label">Current Bid</span>
