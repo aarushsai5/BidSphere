@@ -1,0 +1,15 @@
+[Unit]
+Description=Art&Auction Flask Application (Gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/auction-management-system
+EnvironmentFile=/home/ubuntu/auction-management-system/.env
+ExecStart=/home/ubuntu/auction-management-system/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 --timeout 120 app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
