@@ -58,6 +58,97 @@ ul, ol {
     --radius: 18px;
     --radius-lg: 32px;
     --transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+
+    /* ═══ VIBRANT UTILITIES ═══ */
+    --verified: #3b82f6; /* Blue Tick */
+}
+
+/* ═════ GORGEOUS VIBRANT BACKGROUNDS ═════ */
+.mesh-gradient {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(at 0% 0%, hsla(253,16%,15%,1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%),
+                radial-gradient(at 50% 50%, hsla(180,50%,20%,1) 0, transparent 50%), /* Teal tint */
+                radial-gradient(at 0% 100%, hsla(320,50%,25%,1) 0, transparent 50%), /* Magenta tint */
+                radial-gradient(at 100% 100%, hsla(60,50%,30%,1) 0, transparent 50%); /* Gold tint */
+    background-color: hsla(253,40%,6%,1);
+    z-index: -2;
+    filter: blur(80px);
+    opacity: 0.95;
+    animation: meshBreath 20s infinite alternate ease-in-out;
+}
+
+@keyframes meshBreath {
+    0% { transform: scale(1) rotate(0deg); opacity: 1; }
+    50% { transform: scale(1.1) rotate(2deg); opacity: 0.8; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ═══ FLYING ELEMENTS (Glass Blobs) ═══ */
+.floating-blobs {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.blob {
+    position: absolute;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    animation: floatAround 30s infinite linear;
+}
+
+.blob-1 { width: 500px; height: 500px; top: -100px; right: -100px; animation-duration: 40s; }
+.blob-2 { width: 600px; height: 600px; bottom: -200px; left: -150px; animation-duration: 50s; animation-delay: -15s; }
+.blob-3 { width: 300px; height: 300px; top: 45%; left: 5%; animation-duration: 35s; animation-delay: -8s; }
+
+@keyframes floatAround {
+    0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    33% { transform: translate(8vw, 15vh) scale(1.1) rotate(120deg); }
+    66% { transform: translate(-10vw, 10vh) scale(0.9) rotate(240deg); }
+    100% { transform: translate(0, 0) scale(1) rotate(360deg); }
+}
+
+/* Scroll Parallax for Blobs using JS or simple CSS perspective */
+.parallax-blobs {
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* ═══ VERIFIED BADGE ═══ */
+.verified-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #3b82f6; 
+    vertical-align: middle;
+    margin-left: 6px;
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.6));
+    animation: verifiedPulse 3s infinite ease-in-out;
+}
+
+@keyframes verifiedPulse {
+    0%, 100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 5px rgba(59, 130, 246, 0.4)); }
+    50% { transform: scale(1.15); filter: brightness(1.2) drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)); }
+}
+
+.verified-badge svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
 }
 
 [data-theme="dark"] {
@@ -258,18 +349,7 @@ a {
     background: rgba(15, 23, 42, 0.9);
 }
 
-/* --- Mesh Gradient Background --- */
-.mesh-gradient {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: -1;
-    background: 
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(212, 175, 55, 0.1) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.1) 0px, transparent 50%),
-        radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
-    opacity: 0.6;
-}
+/* --- Mesh Background Placeholder removed for dynamic implementation --- */
 
 .nav-container {
     display: flex;

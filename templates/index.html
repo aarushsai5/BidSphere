@@ -3,6 +3,11 @@
 
 {% block content %}
 <div class="mesh-gradient"></div>
+<div class="floating-blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+</div>
 
 <!-- Vibrant Hero Section -->
 <header class="hero-vibrant" data-aos="fade-up">
@@ -339,7 +344,12 @@
                 <div class="spotlight-info">
                     <span class="spotlight-label">🔥 FEATURED AUCTION</span>
                     <h3 class="spotlight-title">{{ featured.title }}</h3>
-                    <p class="spotlight-seller">by <strong>{{ featured.seller_name }}</strong></p>
+                    <p class="spotlight-seller">
+                        by <strong>{{ featured.seller_name }}</strong>
+                        <span class="verified-badge" title="Verified Seller">
+                            <svg viewBox="0 0 24 24"><path d="M23,12L20.56,9.22L20.9,5.54L17.29,4.72L15.4,1.54L12,3L8.6,1.54L6.71,4.72L3.1,5.53L3.44,9.21L1,12L3.44,14.78L3.1,18.47L6.71,19.29L8.6,22.47L12,21L15.4,22.46L17.29,19.28L20.9,18.46L20.56,14.78L23,12M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"></path></svg>
+                        </span>
+                    </p>
                     <div class="spotlight-meta">
                         <div class="spotlight-price">
                             <span class="sp-label">Current Bid</span>
@@ -381,7 +391,12 @@
                     </div>
                     <div class="card-content">
                         <h3 class="card-title">{{ auction.title }}</h3>
-                        <p class="card-seller">Curated by <strong>{{ auction.seller_name }}</strong></p>
+                        <p class="card-seller">
+                            Curated by <strong>{{ auction.seller_name }}</strong>
+                            <span class="verified-badge" title="Verified Seller">
+                                <svg viewBox="0 0 24 24"><path d="M23,12L20.56,9.22L20.9,5.54L17.29,4.72L15.4,1.54L12,3L8.6,1.54L6.71,4.72L3.1,5.53L3.44,9.21L1,12L3.44,14.78L3.1,18.47L6.71,19.29L8.6,22.47L12,21L15.4,22.46L17.29,19.28L20.9,18.46L20.56,14.78L23,12M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"></path></svg>
+                            </span>
+                        </p>
                         <div class="card-price-row">
                             <div class="price-box">
                                 <span class="label">Current Bid</span>
@@ -675,6 +690,16 @@
         var sidebar = document.querySelector('.facet-sidebar');
         if (sidebar) sidebar.classList.toggle('mobile-open');
     }
+
+    // ─── Floating Blobs Parallax ───
+    window.addEventListener('scroll', function() {
+        var scrolled = window.pageYOffset;
+        var blobs = document.querySelectorAll('.blob');
+        blobs.forEach(function(blob, index) {
+            var speed = 0.2 + (index * 0.1);
+            blob.style.transform = 'translateY(' + (scrolled * speed) + 'px) rotate(' + (scrolled * 0.1) + 'deg)';
+        });
+    });
 
     // Init price track on load
     document.addEventListener('DOMContentLoaded', function() {
