@@ -895,10 +895,13 @@ a {
     backdrop-filter: var(--glass-blur);
     border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
-    overflow: hidden;
+    /* Remove overflow: hidden to allow 3D pop-out */
+    overflow: visible; 
     transition: all var(--transition);
     display: flex;
     flex-direction: column;
+    position: relative;
+    transform-style: preserve-3d;
 }
 
 .auction-card:hover {
@@ -913,6 +916,8 @@ a {
     overflow: hidden;
     aspect-ratio: 4/3;
     background: var(--gray-100);
+    /* Keep top rounding */
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .card-image {
@@ -990,11 +995,12 @@ a {
     color: var(--gray-500);
 }
 
-.card-body {
+.card-content {
     padding: 24px;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    transform: translateZ(20px);
 }
 
 .card-title {
@@ -1017,12 +1023,12 @@ a {
     background: var(--gray-50);
     border-radius: var(--radius);
     margin-bottom: 16px;
-    border: 1px solid var(--gray-100);
+    border: 1px solid var(--gray-200);
 }
 
 [data-theme="dark"] .card-info {
     background: var(--gray-800);
-    border-color: var(--gray-300);
+    border-color: var(--gray-600);
 }
 
 .card-price .label,
@@ -1038,10 +1044,7 @@ a {
 .card-price .value {
     font-size: 1.4rem;
     font-weight: 800;
-    background: var(--gradient-stitch);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--primary);
 }
 
 .card-bids .value {

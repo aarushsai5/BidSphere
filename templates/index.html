@@ -21,16 +21,16 @@
             </div>
             <div class="hero-gallery-mosaic" data-aos="zoom-in" data-aos-delay="400">
                 <div class="mosaic-item item-1" data-tilt>
-                    <img src="https://images.unsplash.com/photo-1549490349-8643362247b5?q=80&w=1000&auto=format&fit=crop" alt="Luxury Interior">
+                    <img src="https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&w=800" alt="Luxury Interior">
                 </div>
                 <div class="mosaic-item item-2" data-tilt>
-                    <img src="https://images.unsplash.com/photo-1511406361295-0a5ff814c0ad?q=80&w=1000&auto=format&fit=crop" alt="Fine Art">
+                    <img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&w=800" alt="Fine Art">
                 </div>
                 <div class="mosaic-item item-3" data-tilt>
-                    <img src="https://images.unsplash.com/photo-1550005810-3503c17d419a?q=80&w=1000&auto=format&fit=crop" alt="Vintage Watch">
+                    <img src="https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&w=800" alt="Vintage Watch">
                 </div>
                 <div class="mosaic-item item-4" data-tilt>
-                    <img src="https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=1000&auto=format&fit=crop" alt="Luxury Car">
+                    <img src="https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=800&auto=format&fit=crop" alt="Luxury Car">
                 </div>
             </div>
         </div>
@@ -91,7 +91,7 @@
         <h2 class="section-header" data-aos="fade-right" style="font-size: 2.5rem; color: var(--gray-900); font-weight: 800; letter-spacing: -0.02em;">Explore Trending Scapes</h2>
         <div class="bento-grid">
             <a href="{{ url_for('index') }}?q=art#results" class="bento-item bento-large" data-aos="zoom-in" data-aos-delay="100" data-tilt>
-                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=1000&auto=format&fit=crop');"></div>
+                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&w=800');"></div>
                 <div class="bento-overlay"></div>
                 <div class="bento-content">
                     <h3>Fine Art & Paintings</h3>
@@ -100,7 +100,7 @@
             </a>
             
             <a href="{{ url_for('index') }}?q=car#results" class="bento-item bento-wide" data-aos="fade-left" data-aos-delay="200" data-tilt>
-                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1000&auto=format&fit=crop');"></div>
+                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=800&auto=format&fit=crop');"></div>
                 <div class="bento-overlay"></div>
                 <div class="bento-content">
                     <h3>Classic Vehicles</h3>
@@ -109,7 +109,7 @@
             </a>
 
             <a href="{{ url_for('index') }}?q=antique#results" class="bento-item" data-aos="fade-up" data-aos-delay="300" data-tilt>
-                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1554188248-986adbb73be4?q=80&w=600&auto=format&fit=crop');"></div>
+                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1554188248-986adbb73be4?q=80&w=800&auto=format&fit=crop');"></div>
                 <div class="bento-overlay"></div>
                 <div class="bento-content">
                     <h3>Vintage Antiques</h3>
@@ -118,7 +118,7 @@
             </a>
 
             <a href="{{ url_for('index') }}?q=jewelry#results" class="bento-item" data-aos="fade-up" data-aos-delay="400" data-tilt>
-                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1515562141207-7a88fb0ce33e?q=80&w=600&auto=format&fit=crop');"></div>
+                <div class="bento-bg" style="background-image: url('https://images.unsplash.com/photo-1515562141207-7a88fb0ce33e?q=80&w=800&auto=format&fit=crop');"></div>
                 <div class="bento-overlay"></div>
                 <div class="bento-content">
                     <h3>Luxury Jewelry</h3>
@@ -368,14 +368,14 @@
                     <div class="card-image-wrapper">
                         {% if auction.image %}
                         {% if auction.image.startswith('http') or auction.image.startswith('data:') %}
-                        <img src="{{ auction.image }}" class="card-image" alt="{{ auction.title }}">
+                        <img src="{{ auction.image }}" class="card-image" alt="{{ auction.title }}" onerror="this.src='https://images.unsplash.com/photo-1579546673177-3e6f9e9d6d7e?q=80&w=800&auto=format&fit=crop';">
                         {% else %}
-                        <img src="{{ url_for('static', filename='images/' + auction.image) }}" class="card-image" alt="{{ auction.title }}">
+                        <img src="{{ url_for('static', filename='images/' + auction.image) }}" class="card-image" alt="{{ auction.title }}" onerror="this.src='https://images.unsplash.com/photo-1579546673177-3e6f9e9d6d7e?q=80&w=800&auto=format&fit=crop';">
                         {% endif %}
                         {% else %}
                         <div class="card-image-placeholder">🖼️</div>
                         {% endif %}
-                        <div class="card-status status-{{ auction.status }}">
+                        <div class="status-badge status-{{ auction.status }}">
                             {{ auction.status | upper }}
                         </div>
                     </div>
