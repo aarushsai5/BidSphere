@@ -2598,6 +2598,8 @@ html {
     margin-bottom: 24px;
     transition: all 0.3s ease;
     min-height: 220px;
+    position: relative;
+    z-index: 2;
 }
 
 .spotlight-card:hover {
