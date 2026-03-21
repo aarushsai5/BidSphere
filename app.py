@@ -19,7 +19,7 @@ app.config.from_object(Config)
 # Neon sends `channel_binding=require` in the URL which psycopg2 doesn't support
 # Strip it out so psycopg2 can connect cleanly (SSL is still enforced via sslmode=require)
 # Also aggressively strip whitespace/newlines which might have been pasted from Windows
-_raw_db_url = app.config.get('DATABASE_URL', '').strip()
+_raw_db_url = (app.config.get('DATABASE_URL') or '').strip()
 if _raw_db_url:
     from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
     parsed = urlparse(_raw_db_url)
