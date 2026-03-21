@@ -378,8 +378,13 @@ def format_date(value):
 
 @app.route('/')
 def index():
+    import re as _re
     status_filter = request.args.get('status', 'all')
     search = request.args.get('q', '')
+    category_filter = request.args.get('category', '')
+    sort_by = request.args.get('sort', 'relevance')
+    price_min_str = request.args.get('price_min', '')
+    price_max_str = request.args.get('price_max', '')
 
     query = 'SELECT * FROM auctions WHERE 1=1'
     params = []
@@ -390,10 +395,17 @@ def index():
     if search:
         query += ' AND (title ILIKE ? OR description ILIKE ?)' if _use_postgres() else ' AND (title LIKE ? OR description LIKE ?)'
         params.extend([f'%{search}%', f'%{search}%'])
+    if category_filter:
+        query += ' AND (description ILIKE ? OR title ILIKE ?)' if _use_postgres() else ' AND (description LIKE ? OR title LIKE ?)'
+        params.extend([f'%{category_filter}%', f'%{category_filter}%'])
 
     auctions_rows = db_execute(query, params).fetchall()
 
     auctions = []
+    all_categories = set()
+    global_min_price = None
+    global_max_price = None
+
     for row in auctions_rows:
         try:
             seller = db_execute('SELECT username, is_verified FROM users WHERE id = ?', (row['seller_id'],)).fetchone()
@@ -405,10 +417,55 @@ def index():
         auc['seller_verified'] = bool(seller.get('is_verified', False)) if seller and hasattr(seller, 'get') else False
         auc['bid_count'] = bids['c'] if bids else 0
         auc['highest_bid'] = bids['m'] if bids['m'] else None
+
+        # Extract category from description
+        desc = auc.get('description', '') or ''
+        cat_match = _re.search(r'\*\*Category:\*\*\s*(.+)', desc)
+        auc['category'] = cat_match.group(1).strip() if cat_match else 'Misc'
+        all_categories.add(auc['category'])
+
+        # Track effective price for range filtering
+        effective_price = float(auc['highest_bid'] if auc['highest_bid'] else auc['starting_price'])
+        auc['effective_price'] = effective_price
+        if global_min_price is None or effective_price < global_min_price:
+            global_min_price = effective_price
+        if global_max_price is None or effective_price > global_max_price:
+            global_max_price = effective_price
+
         auctions.append(auc)
 
+    # Apply price range filter in Python (works for both DB backends)
+    try:
+        price_min = float(price_min_str) if price_min_str else None
+    except ValueError:
+        price_min = None
+    try:
+        price_max = float(price_max_str) if price_max_str else None
+    except ValueError:
+        price_max = None
+
+    if price_min is not None:
+        auctions = [a for a in auctions if a['effective_price'] >= price_min]
+    if price_max is not None:
+        auctions = [a for a in auctions if a['effective_price'] <= price_max]
+
+    # Sorting
+    if sort_by == 'price_low':
+        auctions.sort(key=lambda a: a['effective_price'])
+    elif sort_by == 'price_high':
+        auctions.sort(key=lambda a: a['effective_price'], reverse=True)
+    elif sort_by == 'newest':
+        auctions.sort(key=lambda a: str(a.get('created_at', '')), reverse=True)
+    elif sort_by == 'ending_soon':
+        auctions.sort(key=lambda a: str(a.get('end_time', '')))
+
     return render_template('index.html', auctions=auctions,
-                           status_filter=status_filter, search=search)
+                           status_filter=status_filter, search=search,
+                           category_filter=category_filter, sort_by=sort_by,
+                           price_min=price_min_str, price_max=price_max_str,
+                           categories=sorted(all_categories),
+                           global_min_price=int(global_min_price or 0),
+                           global_max_price=int(global_max_price or 100000))
 
 
 @app.route('/login', methods=['GET', 'POST'])

@@ -56,186 +56,358 @@
     </div>
 </section>
 
-<div class="container">
-    <!-- Categories Section -->
-    <section id="categories" style="padding-top: 40px;" data-aos="fade-up">
-        <div class="section-title">
-            <h2 style="font-size: 1.8rem; font-weight: 800;">Browse Categories</h2>
-            <p style="color: var(--gray-500); margin-top: 8px;">Find exactly what you are looking for.</p>
-        </div>
-        <div class="categories-grid">
-            <a href="{{ url_for('index') }}?q=antique#results" class="category-card {% if search == 'antique' %}category-active{% endif %}">
-                <span class="category-icon">🏺</span>
-                <h3 class="category-name">Antiques</h3>
-            </a>
-            <a href="{{ url_for('index') }}?q=car#results" class="category-card {% if search == 'car' %}category-active{% endif %}">
-                <span class="category-icon">🚗</span>
-                <h3 class="category-name">Vehicles</h3>
-            </a>
-            <a href="{{ url_for('index') }}?q=art#results" class="category-card {% if search == 'art' %}category-active{% endif %}">
-                <span class="category-icon">🎨</span>
-                <h3 class="category-name">Fine Art</h3>
-            </a>
-            <a href="{{ url_for('index') }}?q=jewelry#results" class="category-card {% if search == 'jewelry' %}category-active{% endif %}">
-                <span class="category-icon">💎</span>
-                <h3 class="category-name">Jewelry</h3>
-            </a>
-            <a href="{{ url_for('index') }}?q=electronics#results" class="category-card {% if search == 'electronics' %}category-active{% endif %}">
-                <span class="category-icon">💻</span>
-                <h3 class="category-name">Electronics</h3>
-            </a>
-            <a href="{{ url_for('index') }}#results" class="category-card {% if not search %}category-active{% endif %}"
-                style="background: var(--gradient-secondary); color: white; border: none;">
-                <span class="category-icon">✨</span>
-                <h3 class="category-name" style="color: white;">View All</h3>
-            </a>
-        </div>
-    </section>
+<!-- ═══ LIVE ACTIVITY TICKER ═══ -->
+<div class="ticker-strip">
+    <div class="ticker-content">
+        {% for auction in auctions[:6] %}
+        <span class="ticker-item">
+            🔥 <strong>{{ auction.title }}</strong> — Current bid ₹{{ "%.0f" | format(auction.highest_bid if auction.highest_bid else auction.starting_price) }}
+            {% if auction.bid_count > 0 %}({{ auction.bid_count }} bids){% endif %}
+        </span>
+        {% endfor %}
+        {% for auction in auctions[:6] %}
+        <span class="ticker-item">
+            🔥 <strong>{{ auction.title }}</strong> — Current bid ₹{{ "%.0f" | format(auction.highest_bid if auction.highest_bid else auction.starting_price) }}
+            {% if auction.bid_count > 0 %}({{ auction.bid_count }} bids){% endif %}
+        </span>
+        {% endfor %}
+    </div>
+</div>
 
-    <!-- Enhanced Filters -->
-    <section class="filters-section" data-aos="fade-up">
-        <div class="filters-card">
-            <div class="filters-header">
-                <div class="filters-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    <span>Filter & Search</span>
-                </div>
-                {% if search or status_filter != 'all' %}
-                <a href="{{ url_for('index') }}#results" class="filters-clear">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                    Clear All
-                </a>
+<div class="container">
+    <!-- Faceted Search Layout -->
+    <section class="faceted-layout" id="results">
+        <!-- ══════════ LEFT SIDEBAR ══════════ -->
+        <aside class="facet-sidebar" data-aos="fade-right">
+            <div class="facet-sidebar-header">
+                <h3 class="facet-sidebar-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    FILTERS
+                </h3>
+                {% if search or status_filter != 'all' or category_filter or price_min or price_max %}
+                <a href="{{ url_for('index') }}#results" class="facet-clear-all">Clear all</a>
                 {% endif %}
             </div>
-            <form method="GET" action="{{ url_for('index') }}#results" class="filter-form">
-                <div class="filter-group">
-                    <div class="filter-input-wrap">
-                        <svg class="filter-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="text" name="q" placeholder="Search auctions by name, category..." value="{{ search }}" class="input"
-                            style="padding-left: 44px; flex: 2;">
-                    </div>
-                    <select name="status" class="input select" style="flex: 0.8;">
-                        <option value="all" {% if status_filter=='all' %}selected{% endif %}>All Status</option>
-                        <option value="upcoming" {% if status_filter=='upcoming' %}selected{% endif %}>📅 Upcoming</option>
-                        <option value="live" {% if status_filter=='live' %}selected{% endif %}>🔴 Live Now</option>
-                        <option value="closed" {% if status_filter=='closed' %}selected{% endif %}>✓ Closed</option>
-                    </select>
-                    <button type="submit" class="btn btn-primary" style="padding: 12px 32px; flex-shrink: 0;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg> Search
-                    </button>
+
+            <form method="GET" action="{{ url_for('index') }}#results" id="facetForm">
+                <!-- Search Input -->
+                <div class="facet-search-wrap">
+                    <svg class="facet-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" name="q" placeholder="Search auctions..." value="{{ search }}" class="facet-search-input">
                 </div>
+
+                <!-- ── Category Facet ── -->
+                <div class="facet-group open">
+                    <div class="facet-header" onclick="toggleFacet(this)">
+                        <span>Shop For</span>
+                        <span class="facet-toggle">−</span>
+                    </div>
+                    <div class="facet-body">
+                        <div class="category-pills">
+                            <a href="{{ url_for('index') }}?q={{ search }}&status={{ status_filter }}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results"
+                               class="cat-pill {% if not category_filter %}active{% endif %}">All</a>
+                            {% for cat in categories %}
+                            <a href="{{ url_for('index') }}?q={{ search }}&category={{ cat }}&status={{ status_filter }}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results"
+                               class="cat-pill {% if category_filter == cat %}active{% endif %}">{{ cat }}</a>
+                            {% endfor %}
+                            {% if 'Antiques' not in categories %}
+                            <a href="{{ url_for('index') }}?q=antique&status={{ status_filter }}&sort={{ sort_by }}#results" class="cat-pill {% if search == 'antique' %}active{% endif %}">🏺 Antiques</a>
+                            {% endif %}
+                            {% if 'Vehicles' not in categories and 'Car' not in categories %}
+                            <a href="{{ url_for('index') }}?q=car&status={{ status_filter }}&sort={{ sort_by }}#results" class="cat-pill {% if search == 'car' %}active{% endif %}">🚗 Vehicles</a>
+                            {% endif %}
+                            {% if 'Art' not in categories and 'Fine Art' not in categories %}
+                            <a href="{{ url_for('index') }}?q=art&status={{ status_filter }}&sort={{ sort_by }}#results" class="cat-pill {% if search == 'art' %}active{% endif %}">🎨 Fine Art</a>
+                            {% endif %}
+                            {% if 'Jewelry' not in categories %}
+                            <a href="{{ url_for('index') }}?q=jewelry&status={{ status_filter }}&sort={{ sort_by }}#results" class="cat-pill {% if search == 'jewelry' %}active{% endif %}">💎 Jewelry</a>
+                            {% endif %}
+                            {% if 'Electronics' not in categories %}
+                            <a href="{{ url_for('index') }}?q=electronics&status={{ status_filter }}&sort={{ sort_by }}#results" class="cat-pill {% if search == 'electronics' %}active{% endif %}">💻 Electronics</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Price Facet ── -->
+                <div class="facet-group open">
+                    <div class="facet-header" onclick="toggleFacet(this)">
+                        <span>Price</span>
+                        <span class="facet-toggle">−</span>
+                    </div>
+                    <div class="facet-body">
+                        <div class="price-slider-container">
+                            <div class="price-slider-track" id="priceTrack"></div>
+                            <input type="range" class="price-range-input" id="priceRangeMin"
+                                   min="{{ global_min_price }}" max="{{ global_max_price }}"
+                                   value="{{ price_min if price_min else global_min_price }}"
+                                   oninput="syncPriceSlider()">
+                            <input type="range" class="price-range-input" id="priceRangeMax"
+                                   min="{{ global_min_price }}" max="{{ global_max_price }}"
+                                   value="{{ price_max if price_max else global_max_price }}"
+                                   oninput="syncPriceSlider()">
+                        </div>
+                        <div class="price-inputs-row">
+                            <div class="price-input-box">
+                                <label>Minimum</label>
+                                <div class="price-field">
+                                    <span class="rupee-sign">₹</span>
+                                    <input type="number" name="price_min" id="priceMinInput"
+                                           value="{{ price_min if price_min else global_min_price }}"
+                                           min="{{ global_min_price }}" max="{{ global_max_price }}"
+                                           oninput="syncFromInput()">
+                                </div>
+                            </div>
+                            <div class="price-input-box">
+                                <label>Maximum</label>
+                                <div class="price-field">
+                                    <span class="rupee-sign">₹</span>
+                                    <input type="number" name="price_max" id="priceMaxInput"
+                                           value="{{ price_max if price_max else global_max_price }}"
+                                           min="{{ global_min_price }}" max="{{ global_max_price }}"
+                                           oninput="syncFromInput()">
+                                </div>
+                            </div>
+                            <button type="submit" class="price-go-btn" title="Apply price filter">›</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Status Facet ── -->
+                <div class="facet-group open">
+                    <div class="facet-header" onclick="toggleFacet(this)">
+                        <span>Status</span>
+                        <span class="facet-toggle">−</span>
+                    </div>
+                    <div class="facet-body">
+                        <div class="status-options">
+                            <a href="{{ url_for('index') }}?q={{ search }}{% if category_filter %}&category={{ category_filter }}{% endif %}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results"
+                               class="status-option {% if status_filter == 'all' %}active{% endif %}">
+                                <span class="status-dot dot-all"></span> All
+                            </a>
+                            <a href="{{ url_for('index') }}?q={{ search }}&status=live{% if category_filter %}&category={{ category_filter }}{% endif %}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results"
+                               class="status-option {% if status_filter == 'live' %}active{% endif %}">
+                                <span class="status-dot dot-live"></span> Live Now
+                            </a>
+                            <a href="{{ url_for('index') }}?q={{ search }}&status=upcoming{% if category_filter %}&category={{ category_filter }}{% endif %}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results"
+                               class="status-option {% if status_filter == 'upcoming' %}active{% endif %}">
+                                <span class="status-dot dot-upcoming"></span> Upcoming
+                            </a>
+                            <a href="{{ url_for('index') }}?q={{ search }}&status=closed{% if category_filter %}&category={{ category_filter }}{% endif %}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results"
+                               class="status-option {% if status_filter == 'closed' %}active{% endif %}">
+                                <span class="status-dot dot-closed"></span> Closed
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden fields for form submit -->
+                <input type="hidden" name="status" value="{{ status_filter }}">
+                <input type="hidden" name="sort" value="{{ sort_by }}">
+                {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
             </form>
-            {% if search %}
-            <div class="filters-active-tags">
-                <span class="filter-tag">
+        </aside>
+
+        <!-- ══════════ RIGHT CONTENT AREA ══════════ -->
+        <div class="facet-content">
+            <!-- Results Bar -->
+            <div class="results-bar" data-aos="fade-up">
+                <div class="results-info">
+                    {% if search or category_filter %}
+                    <span class="results-query">You searched for <strong>"{{ search or category_filter }}"</strong></span>
+                    <span class="results-divider">·</span>
+                    {% endif %}
+                    <span class="results-count">{{ auctions | length }} {{ 'product' if auctions | length == 1 else 'products' }} available</span>
+                </div>
+                <div class="results-sort">
+                    <label class="sort-label">SORT BY</label>
+                    <select class="sort-select" id="sortSelect" onchange="applySort(this.value)">
+                        <option value="relevance" {% if sort_by == 'relevance' %}selected{% endif %}>Relevance</option>
+                        <option value="price_low" {% if sort_by == 'price_low' %}selected{% endif %}>Price: Low → High</option>
+                        <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price: High → Low</option>
+                        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                        <option value="ending_soon" {% if sort_by == 'ending_soon' %}selected{% endif %}>Ending Soon</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Active Filter Tags -->
+            {% if search or status_filter != 'all' or category_filter or price_min or price_max %}
+            <div class="active-filters-bar" data-aos="fade-up">
+                {% if search %}
+                <span class="active-tag">
                     🔍 "{{ search }}"
-                    <a href="{{ url_for('index') }}{% if status_filter != 'all' %}?status={{ status_filter }}{% endif %}#results" class="filter-tag-remove">×</a>
+                    <a href="{{ url_for('index') }}?status={{ status_filter }}{% if category_filter %}&category={{ category_filter }}{% endif %}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results" class="tag-remove">×</a>
                 </span>
+                {% endif %}
+                {% if category_filter %}
+                <span class="active-tag tag-category">
+                    📂 {{ category_filter }}
+                    <a href="{{ url_for('index') }}?q={{ search }}&status={{ status_filter }}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results" class="tag-remove">×</a>
+                </span>
+                {% endif %}
                 {% if status_filter != 'all' %}
-                <span class="filter-tag">
+                <span class="active-tag tag-status">
                     {{ '🔴' if status_filter == 'live' else ('📅' if status_filter == 'upcoming' else '✓') }} {{ status_filter | capitalize }}
-                    <a href="{{ url_for('index') }}?q={{ search }}#results" class="filter-tag-remove">×</a>
+                    <a href="{{ url_for('index') }}?q={{ search }}{% if category_filter %}&category={{ category_filter }}{% endif %}&sort={{ sort_by }}{% if price_min %}&price_min={{ price_min }}{% endif %}{% if price_max %}&price_max={{ price_max }}{% endif %}#results" class="tag-remove">×</a>
+                </span>
+                {% endif %}
+                {% if price_min or price_max %}
+                <span class="active-tag tag-price">
+                    💰 ₹{{ price_min or global_min_price }} – ₹{{ price_max or global_max_price }}
+                    <a href="{{ url_for('index') }}?q={{ search }}&status={{ status_filter }}{% if category_filter %}&category={{ category_filter }}{% endif %}&sort={{ sort_by }}#results" class="tag-remove">×</a>
                 </span>
                 {% endif %}
             </div>
             {% endif %}
+
+            <!-- ═══ FEATURED SPOTLIGHT ═══ -->
+            {% set live_auctions = auctions | selectattr('status', 'equalto', 'live') | list %}
+            {% if live_auctions | length > 0 and not search and not category_filter %}
+            {% set featured = live_auctions[0] %}
+            <div class="spotlight-card" data-aos="fade-up">
+                <div class="spotlight-image">
+                    {% if featured.image %}
+                    {% if featured.image.startswith('http') or featured.image.startswith('data:') %}
+                    <img src="{{ featured.image }}" alt="{{ featured.title }}">
+                    {% else %}
+                    <img src="{{ url_for('static', filename='images/' + featured.image) }}" alt="{{ featured.title }}">
+                    {% endif %}
+                    {% else %}
+                    <div class="spotlight-placeholder">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    </div>
+                    {% endif %}
+                    <div class="spotlight-overlay"></div>
+                </div>
+                <div class="spotlight-info">
+                    <span class="spotlight-label">🔥 FEATURED AUCTION</span>
+                    <h3 class="spotlight-title">{{ featured.title }}</h3>
+                    <p class="spotlight-seller">by <strong>{{ featured.seller_name }}</strong></p>
+                    <div class="spotlight-meta">
+                        <div class="spotlight-price">
+                            <span class="sp-label">Current Bid</span>
+                            <span class="sp-value">₹{{ "%.0f" | format(featured.highest_bid if featured.highest_bid else featured.starting_price) }}</span>
+                        </div>
+                        <div class="spotlight-bids">
+                            <span class="sp-label">Bids</span>
+                            <span class="sp-value">{{ featured.bid_count }}</span>
+                        </div>
+                    </div>
+                    <div class="spotlight-timer">
+                        <span>⏱ Ends in: </span>
+                        <span class="countdown" data-end="{{ featured.end_time }}" style="font-weight:800; color:var(--danger);">{{ featured.end_time | format_ist }}</span>
+                    </div>
+                    <a href="{{ url_for('auction_detail', auction_id=featured.id) }}" class="btn btn-primary spotlight-btn">Bid Now →</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Auction Grid -->
+            {% if auctions %}
+            <section class="auction-grid">
+                {% for auction in auctions %}
+                <a href="{{ url_for('auction_detail', auction_id=auction.id) }}" class="auction-card" data-aos="fade-up"
+                    data-aos-delay="{{ loop.index0 * 80 % 320 }}">
+                    <div class="card-image">
+                        {% if auction.image %}
+                        {% if auction.image.startswith('http') or auction.image.startswith('data:') %}
+                        <img src="{{ auction.image }}" alt="{{ auction.title }}">
+                        {% else %}
+                        <img src="{{ url_for('static', filename='images/' + auction.image) }}" alt="{{ auction.title }}">
+                        {% endif %}
+                        {% else %}
+                        <div class="card-image-placeholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" class="feather feather-image">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                        </div>
+                        {% endif %}
+                        <span class="status-badge status-{{ auction.status }}">{{ auction.status | capitalize }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="card-title">{{ auction.title }}</h3>
+                        <p class="card-seller">listed by <span style="font-weight: 600; color: var(--secondary);">{{
+                                auction.seller_name }}</span>{% if auction.seller_verified %}<span class="verified-badge" title="Verified Seller — 10+ successful trades">✓</span>{% endif %}</p>
+                        <div class="card-info">
+                            <div class="card-price">
+                                <span class="label">Current Bid</span>
+                                <span class="value">₹{{ "%.2f" | format(auction.highest_bid if auction.highest_bid else
+                                    auction.starting_price) }}</span>
+                            </div>
+                            <div class="card-bids">
+                                <span class="label">Total Bids</span>
+                                <span class="value">{{ auction.bid_count }}</span>
+                            </div>
+                        </div>
+                        <div class="card-time">
+                            {% if auction.status == 'live' %}
+                            <span class="time-label" style="color: var(--danger);">⏱ Ends in:</span>
+                            <span class="time-value countdown" data-end="{{ auction.end_time }}"
+                                style="font-weight: 700; color: var(--danger);">{{ auction.end_time | format_ist }}</span>
+                            {% elif auction.status == 'upcoming' %}
+                            <span class="time-label">📅 Starts on:</span>
+                            <span class="time-value">{{ auction.start_time | format_ist }}</span>
+                            {% else %}
+                            <span class="time-label">✓ Ended</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </section>
+            {% else %}
+            <div class="empty-state" data-aos="zoom-in"
+                style="text-align: center; padding: 80px 20px; background: var(--white); border-radius: var(--radius-lg); border: 1px dashed var(--gray-300); margin: 40px 0;">
+                <div class="empty-icon" style="font-size: 4rem; margin-bottom: 16px;">🔍</div>
+                <h3 style="font-size: 1.5rem; margin-bottom: 8px;">No auctions found</h3>
+                <p style="color: var(--gray-500); max-width: 400px; margin: 0 auto 24px;">We couldn't find any items matching
+                    your current filters. Try changing your search terms or view all items.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Clear Filters</a>
+            </div>
+            {% endif %}
         </div>
     </section>
-
-    <!-- Auction Grid -->
-    <div id="results"></div>
-    {% if auctions %}
-    <div class="section-title" data-aos="fade-right"
-        style="margin-top: 40px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 1.8rem; font-weight: 800;">
-            {{ '🔴 Live Auctions' if status_filter == 'live' else ('📅 Upcoming' if status_filter == 'upcoming' else ('✓
-            Closed' if status_filter == 'closed' else 'All Discoveries')) }}
-        </h2>
-        <span class="section-count"
-            style="background: var(--gray-100); padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem;">{{
-            auctions | length }} items</span>
-    </div>
-
-    <section class="auction-grid">
-        {% for auction in auctions %}
-        <a href="{{ url_for('auction_detail', auction_id=auction.id) }}" class="auction-card" data-aos="fade-up"
-            data-aos-delay="{{ loop.index0 * 100 % 400 }}">
-            <div class="card-image">
-                {% if auction.image %}
-                {% if auction.image.startswith('http') or auction.image.startswith('data:') %}
-                <img src="{{ auction.image }}" alt="{{ auction.title }}">
-                {% else %}
-                <img src="{{ url_for('static', filename='images/' + auction.image) }}" alt="{{ auction.title }}">
-                {% endif %}
-                {% else %}
-                <div class="card-image-placeholder">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" class="feather feather-image">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                    </svg>
-                </div>
-                {% endif %}
-                <span class="status-badge status-{{ auction.status }}">{{ auction.status | capitalize }}</span>
-            </div>
-            <div class="card-body">
-                <h3 class="card-title">{{ auction.title }}</h3>
-                <p class="card-seller">listed by <span style="font-weight: 600; color: var(--secondary);">{{
-                        auction.seller_name }}</span>{% if auction.seller_verified %}<span class="verified-badge" title="Verified Seller — 10+ successful trades">✓</span>{% endif %}</p>
-                <div class="card-info">
-                    <div class="card-price">
-                        <span class="label">Current Bid</span>
-                        <span class="value">₹{{ "%.2f" | format(auction.highest_bid if auction.highest_bid else
-                            auction.starting_price) }}</span>
-                    </div>
-                    <div class="card-bids">
-                        <span class="label">Total Bids</span>
-                        <span class="value">{{ auction.bid_count }}</span>
-                    </div>
-                </div>
-                <div class="card-time">
-                    {% if auction.status == 'live' %}
-                    <span class="time-label" style="color: var(--danger);">⏱ Ends in:</span>
-                    <span class="time-value countdown" data-end="{{ auction.end_time }}"
-                        style="font-weight: 700; color: var(--danger);">{{ auction.end_time | format_ist }}</span>
-                    {% elif auction.status == 'upcoming' %}
-                    <span class="time-label">📅 Starts on:</span>
-                    <span class="time-value">{{ auction.start_time | format_ist }}</span>
-                    {% else %}
-                    <span class="time-label">✓ Ended</span>
-                    {% endif %}
-                </div>
-            </div>
-        </a>
-        {% endfor %}
-    </section>
-    {% else %}
-    <div class="empty-state" data-aos="zoom-in"
-        style="text-align: center; padding: 80px 20px; background: var(--white); border-radius: var(--radius-lg); border: 1px dashed var(--gray-300); margin: 40px 0;">
-        <div class="empty-icon" style="font-size: 4rem; margin-bottom: 16px;">🔍</div>
-        <h3 style="font-size: 1.5rem; margin-bottom: 8px;">No auctions found</h3>
-        <p style="color: var(--gray-500); max-width: 400px; margin: 0 auto 24px;">We couldn't find any items matching
-            your current filters. Try changing your search terms or view all items.</p>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Clear Filters</a>
-    </div>
-    {% endif %}
 </div>
+
+<!-- ═══ SELLER PROMO BANNER ═══ -->
+<section class="promo-banner" data-aos="fade-up">
+    <div class="container">
+        <div class="promo-card">
+            <div class="promo-content">
+                <span class="promo-badge">💎 FOR SELLERS</span>
+                <h2 class="promo-heading">Got something valuable? List it & earn.</h2>
+                <p class="promo-desc">Join thousands of Indian sellers on Art&Auction. Set your reserve price, upload photos, and let buyers compete. It's free to list!</p>
+                {% if not current_user %}
+                <a href="{{ url_for('register') }}" class="btn btn-primary promo-cta">Start Selling →</a>
+                {% else %}
+                <a href="{{ url_for('create_auction') }}" class="btn btn-primary promo-cta">Create Auction →</a>
+                {% endif %}
+            </div>
+            <div class="promo-visual">
+                <div class="promo-stat-bubble b1">
+                    <span class="psb-num">₹2Cr+</span>
+                    <span class="psb-label">Traded</span>
+                </div>
+                <div class="promo-stat-bubble b2">
+                    <span class="psb-num">5K+</span>
+                    <span class="psb-label">Sellers</span>
+                </div>
+                <div class="promo-stat-bubble b3">
+                    <span class="psb-num">98%</span>
+                    <span class="psb-label">Satisfaction</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
 <!-- Process Section -->
 <section class="how-it-works bg-white"
-    style="background: var(--white); margin-top: 40px; border-top: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100);">
+    style="background: var(--white); margin-top: 0; border-top: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100);">
     <div class="container" data-aos="fade-up">
         <div class="section-title" style="text-align: center;">
             <h2 style="font-size: 2.2rem; font-weight: 800;">How Art&Auction Works</h2>
@@ -267,9 +439,44 @@
     </div>
 </section>
 
+<!-- ═══ TRUST BADGES ═══ -->
+<section class="trust-strip">
+    <div class="container">
+        <div class="trust-grid" data-aos="fade-up">
+            <div class="trust-item">
+                <div class="trust-icon">🛡️</div>
+                <div class="trust-text">
+                    <strong>Verified Sellers</strong>
+                    <span>Every seller is identity-checked</span>
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">🔒</div>
+                <div class="trust-text">
+                    <strong>Secure Payments</strong>
+                    <span>End-to-end encrypted ₹ INR</span>
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">📞</div>
+                <div class="trust-text">
+                    <strong>24/7 Support</strong>
+                    <span>Indian customer care team</span>
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">📦</div>
+                <div class="trust-text">
+                    <strong>Pan-India Shipping</strong>
+                    <span>Delivery across all states</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Review Section -->
 <section class="reviews-section">
-    <!-- Background Indian Motif Subtly -->
     <div style="position: absolute; top: -50%; right: -10%; opacity: 0.03; pointer-events: none;">
         <svg width="800" height="800" viewBox="0 0 100 100" fill="currentColor">
             <path d="M50 85 C30 85 15 65 25 45 C30 35 45 35 50 20 C55 35 70 35 75 45 C85 65 70 85 50 85 Z" />
@@ -327,10 +534,27 @@
     </div>
 </section>
 
+<!-- ═══ NEWSLETTER SIGNUP ═══ -->
+<section class="newsletter-section" data-aos="fade-up">
+    <div class="container">
+        <div class="newsletter-card">
+            <div class="newsletter-text">
+                <h3>🔔 Never Miss an Auction</h3>
+                <p>Get alerts on new listings, price drops, and exclusive deals. Delivered to your inbox.</p>
+            </div>
+            <form class="newsletter-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='✓ Subscribed!'; this.querySelector('button').style.background='var(--accent)';">
+                <input type="email" placeholder="Enter your email address" required class="newsletter-input">
+                <button type="submit" class="btn btn-primary newsletter-btn">Subscribe</button>
+            </form>
+        </div>
+    </div>
+</section>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+    // ─── Countdown Timers ───
     document.querySelectorAll('.countdown').forEach(function (el) {
         var raw = el.dataset.end;
         var endTime = new Date(raw.replace(' ', 'T') + '+05:30').getTime();
@@ -345,6 +569,76 @@
             setTimeout(tick, 1000);
         }
         tick();
+    });
+
+    // ─── Collapsible Facet Groups ───
+    function toggleFacet(header) {
+        var group = header.parentElement;
+        var toggle = header.querySelector('.facet-toggle');
+        group.classList.toggle('open');
+        toggle.textContent = group.classList.contains('open') ? '−' : '+';
+    }
+
+    // ─── Dual Price Range Slider ───
+    function syncPriceSlider() {
+        var minSlider = document.getElementById('priceRangeMin');
+        var maxSlider = document.getElementById('priceRangeMax');
+        var minInput = document.getElementById('priceMinInput');
+        var maxInput = document.getElementById('priceMaxInput');
+        var track = document.getElementById('priceTrack');
+        if (!minSlider || !maxSlider) return;
+
+        var minVal = parseInt(minSlider.value);
+        var maxVal = parseInt(maxSlider.value);
+
+        if (minVal > maxVal) {
+            var temp = minVal;
+            minSlider.value = maxVal;
+            maxSlider.value = temp;
+            minVal = maxVal;
+            maxVal = temp;
+        }
+
+        if (minInput) minInput.value = minVal;
+        if (maxInput) maxInput.value = maxVal;
+
+        // Update track highlight
+        if (track) {
+            var range = parseInt(minSlider.max) - parseInt(minSlider.min);
+            var left = ((minVal - parseInt(minSlider.min)) / range) * 100;
+            var right = ((maxVal - parseInt(minSlider.min)) / range) * 100;
+            track.style.left = left + '%';
+            track.style.width = (right - left) + '%';
+        }
+    }
+
+    function syncFromInput() {
+        var minInput = document.getElementById('priceMinInput');
+        var maxInput = document.getElementById('priceMaxInput');
+        var minSlider = document.getElementById('priceRangeMin');
+        var maxSlider = document.getElementById('priceRangeMax');
+        if (minInput && minSlider) minSlider.value = minInput.value;
+        if (maxInput && maxSlider) maxSlider.value = maxInput.value;
+        syncPriceSlider();
+    }
+
+    // ─── Sort ───
+    function applySort(value) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('sort', value);
+        url.hash = 'results';
+        window.location.href = url.toString();
+    }
+
+    // ─── Mobile Sidebar Toggle ───
+    function toggleMobileSidebar() {
+        var sidebar = document.querySelector('.facet-sidebar');
+        if (sidebar) sidebar.classList.toggle('mobile-open');
+    }
+
+    // Init price track on load
+    document.addEventListener('DOMContentLoaded', function() {
+        syncPriceSlider();
     });
 </script>
 {% endblock %}
