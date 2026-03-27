@@ -406,7 +406,25 @@
                                 <span class="value">{{ auction.bid_count }}</span>
                             </div>
                         </div>
-                        <div style="margin-top: 20px;">
+                        <div style="margin-top: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; background: var(--gray-50); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">
+                            {% if auction.status == 'live' %}
+                            <span style="font-size: 0.9rem; font-weight: 700; color: var(--danger); display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <span class="countdown" data-end="{{ auction.end_time }}"></span>
+                            </span>
+                            {% elif auction.status == 'upcoming' %}
+                            <span style="font-size: 0.9rem; font-weight: 600; color: var(--gray-600); display: flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                Starts on: {{ auction.start_time | format_ist }}
+                            </span>
+                            {% else %}
+                            <span style="font-size: 0.9rem; font-weight: 600; color: var(--gray-500); display: flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                Ended
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div>
                             <a href="{{ url_for('auction_detail', auction_id=auction.id) }}" class="btn btn-primary btn-sm" style="width: 100%;">BID NOW →</a>
                         </div>
                     </div>
@@ -703,6 +721,41 @@
     // Init price track on load
     document.addEventListener('DOMContentLoaded', function() {
         syncPriceSlider();
+        
+        // Init Countdown Timers
+        document.querySelectorAll('.countdown').forEach(function (el) {
+            var raw = el.dataset.end;
+            var dateStr = raw.replace(' ', 'T');
+            if (dateStr.indexOf('+') === -1 && dateStr.indexOf('Z') === -1) {
+                dateStr += '+05:30';
+            }
+            var endTime = new Date(dateStr).getTime();
+            
+            function tick() {
+                var now = Date.now();
+                var diff = endTime - now;
+                if (diff <= 0) { 
+                    el.textContent = 'Ended'; 
+                    el.parentElement.style.color = 'var(--gray-500)'; 
+                    el.parentElement.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Ended';
+                    return; 
+                }
+                var d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                var h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                var s = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                var timeParts = [];
+                if (d > 0) timeParts.push(d + "d");
+                timeParts.push(String(h).padStart(2, '0') + "h");
+                timeParts.push(String(m).padStart(2, '0') + "m");
+                timeParts.push(String(s).padStart(2, '0') + "s");
+                
+                el.textContent = timeParts.join('-');
+                setTimeout(tick, 1000);
+            }
+            tick();
+        });
     });
 </script>
 {% endblock %}
