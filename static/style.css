@@ -3323,7 +3323,7 @@ html {
     transform: translateZ(30px);
 }
 
-/* Premium Red Timer Styles */
+/* Premium Obsidian Diamond Timer Styles */
 .timer-container {
     display: inline-flex !important;
     flex-direction: row !important;
@@ -3331,22 +3331,46 @@ html {
     justify-content: center;
     flex-wrap: nowrap !important;
     gap: 4px;
-    background: #ef4444 !important;
-    padding: 6px 12px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+    padding: 6px 14px;
     border-radius: 40px;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+    position: relative;
+    overflow: hidden;
 }
+
+/* Subtle Platinum Shimmer Overlay */
+.timer-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.15), transparent);
+    transform: skewX(-20deg);
+    animation: diamondShine 4s infinite;
+}
+
+@keyframes diamondShine {
+    0% { left: -100%; }
+    20% { left: 200%; }
+    100% { left: 200%; }
+}
+
 .time-block {
     display: inline-flex !important;
     flex-direction: row !important;
     align-items: baseline;
     justify-content: center;
     min-width: 28px;
+    position: relative;
+    z-index: 2;
 }
 .time-val {
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: #ffffff !important;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
     font-variant-numeric: tabular-nums;
     font-family: 'Outfit', sans-serif;
     letter-spacing: 0px;
@@ -3354,13 +3378,15 @@ html {
 .time-lbl {
     font-size: 0.65rem;
     font-weight: 800;
-    color: rgba(255,255,255,0.8) !important;
+    color: rgba(255,255,255,0.5) !important;
     margin-left: 2px;
     text-transform: uppercase;
 }
 .time-sep {
-    color: rgba(255,255,255,0.6) !important;
+    color: rgba(255,255,255,0.3) !important;
     font-weight: 800;
     font-size: 0.9rem;
     margin: 0 1px;
+    position: relative;
+    z-index: 2;
 }
