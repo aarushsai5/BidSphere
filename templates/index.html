@@ -626,23 +626,6 @@
 
 {% block scripts %}
 <script>
-    // ─── Countdown Timers ───
-    document.querySelectorAll('.countdown').forEach(function (el) {
-        var raw = el.dataset.end;
-        var endTime = new Date(raw.replace(' ', 'T') + '+05:30').getTime();
-        function tick() {
-            var now = Date.now();
-            var diff = endTime - now;
-            if (diff <= 0) { el.textContent = 'Ended'; el.style.color = 'var(--gray-500)'; return; }
-            var h = Math.floor(diff / 3600000).toString().padStart(2, '0');
-            var m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-            var s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-            el.innerHTML = '<span class="tm-seg">' + h + '</span><span class="tm-lbl">h</span><span class="tm-seg">' + m + '</span><span class="tm-lbl">m</span><span class="tm-seg">' + s + '</span><span class="tm-lbl">s</span>';
-            setTimeout(tick, 1000);
-        }
-        tick();
-    });
-
     // ─── Collapsible Facet Groups ───
     function toggleFacet(header) {
         var group = header.parentElement;
@@ -745,13 +728,16 @@
                 var m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                 var s = Math.floor((diff % (1000 * 60)) / 1000);
                 
-                var timeParts = [];
-                if (d > 0) timeParts.push(d + "d");
-                timeParts.push(String(h).padStart(2, '0') + "h");
-                timeParts.push(String(m).padStart(2, '0') + "m");
-                timeParts.push(String(s).padStart(2, '0') + "s");
+                var html = '<div class="timer-container">';
+                if (d > 0) {
+                    html += '<div class="time-block"><span class="time-val">' + d + '</span><span class="time-lbl">d</span></div><div class="time-sep">:</div>';
+                }
+                html += '<div class="time-block"><span class="time-val">' + String(h).padStart(2, '0') + '</span><span class="time-lbl">h</span></div><div class="time-sep">:</div>';
+                html += '<div class="time-block"><span class="time-val">' + String(m).padStart(2, '0') + '</span><span class="time-lbl">m</span></div><div class="time-sep">:</div>';
+                html += '<div class="time-block"><span class="time-val">' + String(s).padStart(2, '0') + '</span><span class="time-lbl">s</span></div>';
+                html += '</div>';
                 
-                el.textContent = timeParts.join('-');
+                el.innerHTML = html;
                 setTimeout(tick, 1000);
             }
             tick();

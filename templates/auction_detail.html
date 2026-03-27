@@ -58,6 +58,13 @@
             </div>
 
             {% if auction.status == 'live' %}
+            <div style="margin-bottom: 24px; display: inline-flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.1); padding: 12px 24px; border-radius: 40px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                <span style="font-size: 1rem; font-weight: 800; color: var(--danger); display: flex; align-items: center; gap: 8px; letter-spacing: 1px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    ENDS IN: <span class="countdown" data-end="{{ auction.end_time }}"></span>
+                </span>
+            </div>
+
             {% if not current_user %}
             <div class="alert alert-warning"
                 style="background: rgba(245, 158, 11, 0.1); color: #b45309; border-color: rgba(245, 158, 11, 0.2);">
@@ -131,4 +138,47 @@
     </div>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Init Countdown Timers just like index.html
+        document.querySelectorAll('.countdown').forEach(function (el) {
+            var raw = el.dataset.end;
+            var dateStr = raw.replace(' ', 'T');
+            if (dateStr.indexOf('+') === -1 && dateStr.indexOf('Z') === -1) {
+                dateStr += '+05:30';
+            }
+            var endTime = new Date(dateStr).getTime();
+            
+            function tick() {
+                var now = Date.now();
+                var diff = endTime - now;
+                if (diff <= 0) { 
+                    el.textContent = 'Ended'; 
+                    el.parentElement.style.color = 'var(--gray-500)'; 
+                    return; 
+                }
+                var d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                var h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                var s = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                var html = '<div class="timer-container">';
+                if (d > 0) {
+                    html += '<div class="time-block"><span class="time-val">' + d + '</span><span class="time-lbl">d</span></div><div class="time-sep">:</div>';
+                }
+                html += '<div class="time-block"><span class="time-val">' + String(h).padStart(2, '0') + '</span><span class="time-lbl">h</span></div><div class="time-sep">:</div>';
+                html += '<div class="time-block"><span class="time-val">' + String(m).padStart(2, '0') + '</span><span class="time-lbl">m</span></div><div class="time-sep">:</div>';
+                html += '<div class="time-block"><span class="time-val">' + String(s).padStart(2, '0') + '</span><span class="time-lbl">s</span></div>';
+                html += '</div>';
+                
+                el.innerHTML = html;
+                setTimeout(tick, 1000);
+            }
+            tick();
+        });
+    });
+</script>
 {% endblock %}
