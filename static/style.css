@@ -3318,7 +3318,49 @@ html {
 .auction-card:hover .card-image img {
     transform: scale(1.08) translateZ(20px);
 }
+
 .auction-card .card-body {
     transform: translateZ(30px);
-}. c o u n t d o w n   {   f o n t - v a r i a n t - n u m e r i c :   t a b u l a r - n u m s ;   d i s p l a y :   i n l i n e - b l o c k ;   m i n - w i d t h :   9 0 p x ;   }  
- 
+}
+
+/* Premium Red Timer Styles */
+.timer-container {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap !important;
+    gap: 4px;
+    background: #ef4444 !important;
+    padding: 6px 12px;
+    border-radius: 40px;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+.time-block {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: baseline;
+    justify-content: center;
+    min-width: 28px;
+}
+.time-val {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #ffffff !important;
+    font-variant-numeric: tabular-nums;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: 0px;
+}
+.time-lbl {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: rgba(255,255,255,0.8) !important;
+    margin-left: 2px;
+    text-transform: uppercase;
+}
+.time-sep {
+    color: rgba(255,255,255,0.6) !important;
+    font-weight: 800;
+    font-size: 0.9rem;
+    margin: 0 1px;
+}
