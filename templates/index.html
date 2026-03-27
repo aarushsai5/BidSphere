@@ -362,7 +362,7 @@
                     </div>
                     <div class="spotlight-timer">
                         <span>⏱ Ends in: </span>
-                        <span class="countdown" data-end="{{ featured.end_time }}" style="font-weight:800; color:var(--danger);">{{ featured.end_time | format_ist }}</span>
+                        <span class="countdown" data-end="{{ featured.end_time }}"></span>
                     </div>
                     <a href="{{ url_for('auction_detail', auction_id=featured.id) }}" class="btn btn-primary spotlight-btn">Bid Now →</a>
                 </div>
