@@ -11,9 +11,9 @@ from app import app, db_execute, db_commit, _use_postgres
 # Enhanced Sellers List
 SELLERS = [
     {"username": "RoyalAntiques", "email": "contact@royalantiques.com", "verified": True},
-    {"username": "LuxuryAutoHub", "email": "sales@luxuryauto.com", "verified": True},
+    {"username": "LuxuryAutoHub", "email": "sales@luxuryauto.com", "verified": False},
     {"username": "FineArtGallery", "email": "curator@fineart.com", "verified": True},
-    {"username": "EliteJewels", "email": "info@elitejewels.com", "verified": True},
+    {"username": "EliteJewels", "email": "info@elitejewels.com", "verified": False},
     {"username": "TechPioneer", "email": "support@techpioneer.com", "verified": False},
 ]
 
@@ -162,6 +162,28 @@ def seed():
                         )
                     db_commit()
                     print(f"Added {num_bids} bids to '{item['title']}'")
+
+        # 3. Add 10 successful dummy transactions for verified sellers
+        print("Generating dummy successful trades for verified sellers...")
+        verification_buyer = db_execute("SELECT id FROM users WHERE role = 'buyer' LIMIT 1").fetchone()
+        
+        for s_data in SELLERS:
+            if s_data["verified"] and verification_buyer:
+                seller_id = seller_map[s_data["username"]]
+                for i in range(10):
+                    # add a dummy closed auction
+                    db_execute(
+                        "INSERT INTO auctions (seller_id, title, description, starting_price, min_increment, start_time, end_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (seller_id, f"Dummy Setup Auction {i}", "System generated", 100, 10, "2023-01-01 00:00:00", "2023-01-02 00:00:00", "closed")
+                    )
+                    dummy_auction_id = db_execute("SELECT id FROM auctions ORDER BY id DESC LIMIT 1").fetchone()["id"]
+                    # add transaction
+                    db_execute(
+                        "INSERT INTO transactions (auction_id, buyer_id, amount, status) VALUES (?, ?, ?, ?)",
+                        (dummy_auction_id, verification_buyer["id"], 150.0, "completed")
+                    )
+                db_commit()
+                print(f"Added 10 successful dummy trades for {s_data['username']}")
 
         print("Successfully seeded enhanced dummy data!")
 
