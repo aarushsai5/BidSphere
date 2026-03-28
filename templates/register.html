@@ -1,51 +1,74 @@
 {% extends 'base.html' %}
-{% block title %}Create Account — Art&Auction{% endblock %}
+{% block title %}Apply for Membership — Art&Auction{% endblock %}
 
 {% block content %}
-<div class="auth-split-layout">
-    <div class="auth-image-side" data-aos="fade-right">
-        <img src="{{ url_for('static', filename='images/auth-bg.png') }}" alt="Art&Auction Auctions Illustration">
-    </div>
-    <div class="auth-form-side" data-aos="fade-left">
-        <div class="auth-form-container">
-            <h1 class="auth-title">Create an account</h1>
-            <p class="auth-subtitle">Join Art&Auction to start bidding and selling.</p>
+<div class="luxury-auth-wrapper" style="min-height: 100vh; display: flex; background: linear-gradient(135deg, #0a0e17 0%, #111827 100%); position: relative; overflow: hidden; padding: 40px 0;">
+    <!-- Gold particle background -->
+    <div style="position: absolute; inset: 0; background: radial-gradient(circle at 80% 80%, rgba(212,175,55,0.05) 0%, transparent 60%); pointer-events: none; z-index: 0;"></div>
 
-            <form action="{{ url_for('register') }}" method="post" class="form-card"
-                style="margin: 0; padding: 30px; box-shadow: var(--shadow-md);">
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" id="username" name="username" class="input" required
-                        placeholder="Choose a username">
+    <div class="auth-split-layout" style="display: flex; width: 100%; max-width: 1400px; margin: 0 auto; min-height: 750px; border-radius: 24px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,0.6); position: relative; z-index: 1;">
+        
+        <!-- Left Side: Form (Flipped for register) -->
+        <div class="auth-form-side" data-aos="fade-right" style="flex: 1; min-width: 320px; max-width: 600px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); padding: 60px; display: flex; flex-direction: column; justify-content: center; position: relative; border-right: 1px solid rgba(255,255,255,0.05);">
+            
+            <div style="max-width: 400px; margin: 0 auto; width: 100%;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="width: 50px; height: 50px; margin: 0 auto 20px; border-radius: 50%; background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05)); border: 1px solid rgba(212,175,55,0.3); display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                    </div>
+                    <h1 style="font-family: 'Playfair Display', serif; font-size: 2.2rem; color: #fff; margin-bottom: 12px; font-weight: 700;">Exclusive Membership</h1>
+                    <p style="color: rgba(255,255,255,0.5); font-family: 'Inter', sans-serif; font-size: 0.9rem;">Join Art&Auction to bid on or sell world-class assets.</p>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label for="email" class="form-label">Email ID</label>
-                    <input type="email" id="email" name="email" class="input" required placeholder="name@example.com">
-                </div>
+                <form action="{{ url_for('register') }}" method="post" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div>
+                        <label for="username" style="display: block; font-size: 0.8rem; font-weight: 600; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-family: 'Inter', sans-serif;">Username</label>
+                        <input type="text" id="username" name="username" required placeholder="Choose a unique identifier" style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: all 0.3s ease; outline: none;" onfocus="this.style.border='1px solid rgba(212,175,55,0.6)'; this.style.background='rgba(255,255,255,0.05)';" onblur="this.style.border='1px solid rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)';">
+                    </div>
 
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" id="password" name="password" class="input" required placeholder="••••••••">
-                </div>
+                    <div>
+                        <label for="email" style="display: block; font-size: 0.8rem; font-weight: 600; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-family: 'Inter', sans-serif;">Email Address</label>
+                        <input type="email" id="email" name="email" required placeholder="name@example.com" style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: all 0.3s ease; outline: none;" onfocus="this.style.border='1px solid rgba(212,175,55,0.6)'; this.style.background='rgba(255,255,255,0.05)';" onblur="this.style.border='1px solid rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)';">
+                    </div>
 
-                <div class="form-group" style="margin-bottom: 24px;">
-                    <label for="role" class="form-label">I want to:</label>
-                    <select id="role" name="role" class="input select" required>
-                        <option value="bidder">🎯 Just Bid (Buyer Account)</option>
-                        <option value="seller">🏪 Sell & Bid (Seller Account)</option>
-                    </select>
-                </div>
+                    <div>
+                        <label for="password" style="display: block; font-size: 0.8rem; font-weight: 600; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-family: 'Inter', sans-serif;">Password</label>
+                        <input type="password" id="password" name="password" required placeholder="••••••••" style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: all 0.3s ease; outline: none;" onfocus="this.style.border='1px solid rgba(212,175,55,0.6)'; this.style.background='rgba(255,255,255,0.05)';" onblur="this.style.border='1px solid rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)';">
+                    </div>
 
-                <button type="submit" class="btn btn-primary"
-                    style="width: 100%; margin-top: 10px; font-size: 1.1rem; padding: 12px; background: #ef4444; color: white;">Create
-                    Account</button>
+                    <div>
+                        <label for="role" style="display: block; font-size: 0.8rem; font-weight: 600; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-family: 'Inter', sans-serif;">Membership Tier</label>
+                        <div style="position: relative;">
+                            <select id="role" name="role" required style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 0.95rem; font-family: 'Inter', sans-serif; appearance: none; cursor: pointer; transition: all 0.3s ease; outline: none;" onfocus="this.style.border='1px solid rgba(212,175,55,0.6)';" onblur="this.style.border='1px solid rgba(255,255,255,0.1)';">
+                                <option value="bidder" style="background: #0f172a; color: #fff;">Buyer / Collector</option>
+                                <option value="seller" style="background: #0f172a; color: #fff;">Seller / Curator</option>
+                            </select>
+                            <div style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #d4af37;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                        </div>
+                    </div>
 
-                <div style="text-align: left; margin-top: 24px; color: var(--gray-500);">
-                    Already have an account? <a href="{{ url_for('login') }}"
-                        style="color: var(--secondary); font-weight: 600;">Log in</a>
-                </div>
-            </form>
+                    <button type="submit" style="width: 100%; margin-top: 10px; padding: 16px; background: linear-gradient(135deg, #d4af37, #b58d19); border: none; border-radius: 8px; color: #0a0e17; font-size: 1.05rem; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.3s ease; box-shadow: 0 10px 25px rgba(212,175,55,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 15px 30px rgba(212,175,55,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(212,175,55,0.2)';">
+                        Submit Application
+                    </button>
+
+                    <div style="text-align: center; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                        <span style="color: rgba(255,255,255,0.5); font-size: 0.95rem;">Already approved?</span>
+                        <a href="{{ url_for('login') }}" style="color: #d4af37; font-weight: 600; font-size: 0.95rem; text-decoration: none; margin-left: 5px; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Access Vault</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Side: Luxury Image (Flipped layout) -->
+        <div class="auth-image-side" data-aos="fade-left" style="flex: 1; position: relative; overflow: hidden; display: none; @media(min-width: 900px){display: block;}">
+            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=85&w=1200&fit=crop" alt="Abstract Luxury Gold Fluid" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0.9) contrast(1.15);">
+            <div style="position: absolute; inset: 0; background: linear-gradient(to left, rgba(10,14,23,0.1) 0%, rgba(10,14,23,0.9) 100%);"></div>
+            <div style="position: absolute; bottom: 60px; left: 60px; right: 60px; text-align: right;">
+                <span style="display: inline-block; padding: 6px 16px; border: 1px solid rgba(212,175,55,0.4); border-radius: 50px; color: #d4af37; font-size: 0.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; backdrop-filter: blur(10px);">CURATED EXCELLENCE</span>
+                <h2 style="font-family: 'Playfair Display', serif; font-size: 2.8rem; color: #fff; margin-bottom: 16px; line-height: 1.1; font-weight: 600; text-align: right;"><span style="background: linear-gradient(135deg, #d4af37, #f5e6a3); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">White Glove</span><br>Service at its Peak.</h2>
+            </div>
         </div>
     </div>
 </div>
