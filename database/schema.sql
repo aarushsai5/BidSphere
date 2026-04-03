@@ -54,3 +54,13 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE CASCADE,
     FOREIGN KEY (winner_id)  REFERENCES users(id)
 );
+
+-- Reviews table (site-wide platform reviews)
+CREATE TABLE IF NOT EXISTS reviews (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL UNIQUE,
+    rating      INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review_text TEXT    NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

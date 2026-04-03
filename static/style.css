@@ -1251,6 +1251,57 @@ a {
     color: var(--gray-400);
 }
 
+/* Review Form Card */
+.review-form-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    padding: 36px;
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(12px);
+    position: relative;
+    z-index: 2;
+}
+
+.review-form-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #d4af37, transparent);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Interactive Star Rating — CSS-only (reverse order trick) */
+.star-rating-input {
+    display: inline-flex;
+    flex-direction: row-reverse;
+    gap: 4px;
+}
+
+.star-rating-input input[type="radio"] {
+    display: none;
+}
+
+.star-rating-input label {
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.15s ease;
+    line-height: 1;
+}
+
+.star-rating-input label:hover,
+.star-rating-input label:hover ~ label,
+.star-rating-input input[type="radio"]:checked ~ label {
+    color: #d4af37;
+}
+
+.star-rating-input label:hover {
+    transform: scale(1.15);
+}
+
 /* Bidding Info Section */
 .how-it-works {
     padding: 80px 0;

@@ -147,6 +147,14 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY (auction_id) REFERENCES auctions(id),
     FOREIGN KEY (winner_id)  REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS reviews (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL UNIQUE,
+    rating      INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review_text TEXT    NOT NULL,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 """
 
 def init_db():
@@ -195,13 +203,13 @@ def init_db():
 _migration_done = False
 
 def _run_migrations():
-    """Ensure is_verified column exists. Safe to call repeatedly."""
+    """Ensure is_verified column and reviews table exist. Safe to call repeatedly."""
     global _migration_done
     if _migration_done:
         return
     try:
+        conn = get_db()
         if _use_postgres():
-            conn = get_db()
             cur = conn.cursor()
             cur.execute("""
                 DO $$
@@ -213,6 +221,30 @@ def _run_migrations():
                         ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT FALSE;
                     END IF;
                 END $$;
+            """)
+            # Create reviews table if missing
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS reviews (
+                    id          SERIAL PRIMARY KEY,
+                    user_id     INTEGER NOT NULL UNIQUE,
+                    rating      INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                    review_text TEXT    NOT NULL,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+            """)
+            conn.commit()
+        else:
+            # SQLite: create reviews table if missing
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS reviews (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id     INTEGER NOT NULL UNIQUE,
+                    rating      INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                    review_text TEXT    NOT NULL,
+                    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
             """)
             conn.commit()
         _migration_done = True
@@ -459,13 +491,93 @@ def index():
     elif sort_by == 'ending_soon':
         auctions.sort(key=lambda a: str(a.get('end_time', '')))
 
+    # Fetch reviews for the reviews section
+    try:
+        reviews = db_execute('''
+            SELECT r.id, r.rating, r.review_text, r.created_at, u.username
+            FROM reviews r
+            JOIN users u ON r.user_id = u.id
+            ORDER BY r.created_at DESC
+            LIMIT 10
+        ''', ()).fetchall()
+        reviews = [dict(r) for r in reviews]
+    except Exception:
+        reviews = []
+
+    # Check if current user already has a review
+    user_has_review = False
+    if g.user:
+        try:
+            existing = db_execute('SELECT id FROM reviews WHERE user_id = ?', (g.user.id,)).fetchone()
+            user_has_review = existing is not None
+        except Exception:
+            pass
+
     return render_template('index.html', auctions=auctions,
                            status_filter=status_filter, search=search,
                            category_filter=category_filter, sort_by=sort_by,
                            price_min=price_min_str, price_max=price_max_str,
                            categories=sorted(all_categories),
                            global_min_price=int(global_min_price or 0),
-                           global_max_price=int(global_max_price or 100000))
+                           global_max_price=int(global_max_price or 100000),
+                           reviews=reviews, user_has_review=user_has_review)
+
+
+# ── Reviews ──────────────────────────────────────────────────
+
+@app.route('/review', methods=['POST'])
+def submit_review():
+    if not g.user:
+        flash('You must be logged in to submit a review.', 'danger')
+        return redirect(url_for('login'))
+
+    rating = request.form.get('rating', type=int)
+    review_text = request.form.get('review_text', '').strip()
+
+    if not rating or rating < 1 or rating > 5:
+        flash('Please select a rating between 1 and 5 stars.', 'warning')
+        return redirect(url_for('index') + '#reviews')
+    if not review_text or len(review_text) < 10:
+        flash('Review must be at least 10 characters long.', 'warning')
+        return redirect(url_for('index') + '#reviews')
+    if len(review_text) > 500:
+        review_text = review_text[:500]
+
+    # Check if user already has a review (one per user)
+    existing = db_execute('SELECT id FROM reviews WHERE user_id = ?', (g.user.id,)).fetchone()
+    if existing:
+        # Update existing review
+        db_execute('UPDATE reviews SET rating = ?, review_text = ? WHERE user_id = ?',
+                   (rating, review_text, g.user.id))
+    else:
+        db_execute('INSERT INTO reviews (user_id, rating, review_text) VALUES (?, ?, ?)',
+                   (g.user.id, rating, review_text))
+    db_commit()
+    flash('Thank you for your review!', 'success')
+    return redirect(url_for('index') + '#reviews')
+
+
+@app.route('/review/<int:review_id>/delete', methods=['POST'])
+def delete_review(review_id):
+    if not g.user:
+        flash('You must be logged in.', 'danger')
+        return redirect(url_for('login'))
+
+    review = db_execute('SELECT * FROM reviews WHERE id = ?', (review_id,)).fetchone()
+    if not review:
+        flash('Review not found.', 'danger')
+        return redirect(url_for('index') + '#reviews')
+
+    # Only the author or an admin can delete
+    is_admin = g.user.role == 'admin' if hasattr(g.user, 'role') else False
+    if review['user_id'] != g.user.id and not is_admin:
+        flash('You can only delete your own reviews.', 'danger')
+        return redirect(url_for('index') + '#reviews')
+
+    db_execute('DELETE FROM reviews WHERE id = ?', (review_id,))
+    db_commit()
+    flash('Review deleted.', 'success')
+    return redirect(url_for('index') + '#reviews')
 
 
 @app.route('/login', methods=['GET', 'POST'])
