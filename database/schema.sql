@@ -64,3 +64,14 @@ CREATE TABLE IF NOT EXISTS reviews (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Page views for traffic analytics
+CREATE TABLE IF NOT EXISTS page_views (
+    id          SERIAL PRIMARY KEY,
+    path        TEXT NOT NULL,
+    ip_addr     TEXT,
+    user_agent  TEXT,
+    referrer    TEXT,
+    user_id     INTEGER,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);

@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, g
 import requests
 import os
 import time
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Load .env file for local development (no-op in production)
@@ -155,6 +156,15 @@ CREATE TABLE IF NOT EXISTS reviews (
     created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS page_views (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    path        TEXT NOT NULL,
+    ip_addr     TEXT,
+    user_agent  TEXT,
+    referrer    TEXT,
+    user_id     INTEGER,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 def init_db():
@@ -233,6 +243,18 @@ def _run_migrations():
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );
             """)
+            # Create page_views table if missing
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS page_views (
+                    id          SERIAL PRIMARY KEY,
+                    path        TEXT NOT NULL,
+                    ip_addr     TEXT,
+                    user_agent  TEXT,
+                    referrer    TEXT,
+                    user_id     INTEGER,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+            """)
             conn.commit()
         else:
             # SQLite: create reviews table if missing
@@ -246,6 +268,17 @@ def _run_migrations():
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS page_views (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    path        TEXT NOT NULL,
+                    ip_addr     TEXT,
+                    user_agent  TEXT,
+                    referrer    TEXT,
+                    user_id     INTEGER,
+                    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
             conn.commit()
         _migration_done = True
     except Exception as e:
@@ -255,6 +288,40 @@ def _run_migrations():
 @app.before_request
 def ensure_migrations():
     _run_migrations()
+
+
+# ─────────────────────────────────────────────────────────────
+# Traffic Tracking
+# ─────────────────────────────────────────────────────────────
+
+_SKIP_TRACKING = ('/static/', '/favicon.ico', '/_vercel/')
+
+@app.after_request
+def track_page_view(response):
+    """Log page views for analytics. Skip static assets and non-HTML responses."""
+    try:
+        path = request.path
+        # Skip static files, favicon, vercel internals
+        if any(path.startswith(s) for s in _SKIP_TRACKING):
+            return response
+        # Only track successful GET requests (actual page views)
+        if request.method != 'GET' or response.status_code >= 400:
+            return response
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
+        ua = (request.headers.get('User-Agent') or '')[:256]
+        ref = (request.headers.get('Referer') or '')[:512]
+        uid = g.user.id if getattr(g, 'user', None) else None
+        db_execute(
+            'INSERT INTO page_views (path, ip_addr, user_agent, referrer, user_id) VALUES (?, ?, ?, ?, ?)',
+            (path, ip, ua, ref, uid)
+        )
+        db_commit()
+    except Exception:
+        pass  # Never break the response for analytics
+    return response
+
 
 # ─────────────────────────────────────────────────────────────
 # Image upload helpers
@@ -859,6 +926,57 @@ def admin_panel():
     except Exception:
         stats['verified_sellers'] = 0
 
+    # ── Traffic Analytics ─────────────────────────────────────────
+    traffic = {}
+    now_utc = datetime.utcnow()
+    if _use_postgres():
+        traffic['views_today'] = db_execute("SELECT COUNT(*) as c FROM page_views WHERE created_at >= now() - interval '1 day'").fetchone()['c']
+        traffic['views_week'] = db_execute("SELECT COUNT(*) as c FROM page_views WHERE created_at >= now() - interval '7 days'").fetchone()['c']
+        traffic['views_month'] = db_execute("SELECT COUNT(*) as c FROM page_views WHERE created_at >= now() - interval '30 days'").fetchone()['c']
+        traffic['views_all'] = db_execute("SELECT COUNT(*) as c FROM page_views").fetchone()['c']
+        traffic['unique_today'] = db_execute("SELECT COUNT(DISTINCT ip_addr) as c FROM page_views WHERE created_at >= now() - interval '1 day'").fetchone()['c']
+        traffic['unique_all'] = db_execute("SELECT COUNT(DISTINCT ip_addr) as c FROM page_views").fetchone()['c']
+
+        # Top pages
+        traffic['top_pages'] = db_execute("""
+            SELECT path, COUNT(*) as hits FROM page_views
+            GROUP BY path ORDER BY hits DESC LIMIT 10
+        """).fetchall()
+
+        # Daily chart data (last 7 days)
+        daily_chart = []
+        for i in range(6, -1, -1):
+            day_start = (now_utc - timedelta(days=i)).strftime('%Y-%m-%d')
+            row = db_execute(
+                "SELECT COUNT(*) as c FROM page_views WHERE created_at::date = %s",
+                (day_start,)
+            ).fetchone()
+            daily_chart.append({'day': day_start, 'count': row['c']})
+        traffic['daily_chart'] = daily_chart
+
+        # Recent activity
+        traffic['recent'] = db_execute("""
+            SELECT pv.path, pv.ip_addr, pv.user_agent, pv.created_at, u.username
+            FROM page_views pv
+            LEFT JOIN users u ON pv.user_id = u.id
+            ORDER BY pv.created_at DESC LIMIT 25
+        """).fetchall()
+    else:
+        traffic['views_today'] = db_execute("SELECT COUNT(*) as c FROM page_views WHERE created_at >= datetime('now', '-1 day')").fetchone()['c']
+        traffic['views_week'] = db_execute("SELECT COUNT(*) as c FROM page_views WHERE created_at >= datetime('now', '-7 days')").fetchone()['c']
+        traffic['views_month'] = db_execute("SELECT COUNT(*) as c FROM page_views WHERE created_at >= datetime('now', '-30 days')").fetchone()['c']
+        traffic['views_all'] = db_execute("SELECT COUNT(*) as c FROM page_views").fetchone()['c']
+        traffic['unique_today'] = db_execute("SELECT COUNT(DISTINCT ip_addr) as c FROM page_views WHERE created_at >= datetime('now', '-1 day')").fetchone()['c']
+        traffic['unique_all'] = db_execute("SELECT COUNT(DISTINCT ip_addr) as c FROM page_views").fetchone()['c']
+        traffic['top_pages'] = db_execute("SELECT path, COUNT(*) as hits FROM page_views GROUP BY path ORDER BY hits DESC LIMIT 10").fetchall()
+        daily_chart = []
+        for i in range(6, -1, -1):
+            day_start = (now_utc - timedelta(days=i)).strftime('%Y-%m-%d')
+            row = db_execute("SELECT COUNT(*) as c FROM page_views WHERE date(created_at) = ?", (day_start,)).fetchone()
+            daily_chart.append({'day': day_start, 'count': row['c']})
+        traffic['daily_chart'] = daily_chart
+        traffic['recent'] = db_execute("SELECT pv.path, pv.ip_addr, pv.user_agent, pv.created_at, u.username FROM page_views pv LEFT JOIN users u ON pv.user_id = u.id ORDER BY pv.created_at DESC LIMIT 25").fetchall()
+
     users = db_execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
 
     auctions = []
@@ -884,7 +1002,7 @@ def admin_panel():
         auc['highest_bid'] = bids['m'] if bids['m'] else None
         auctions.append(auc)
 
-    return render_template('admin_panel.html', stats=stats, users=users, auctions=auctions)
+    return render_template('admin_panel.html', stats=stats, users=users, auctions=auctions, traffic=traffic)
 
 
 @app.route('/admin/delete_auction/<int:auction_id>', methods=['POST'])
