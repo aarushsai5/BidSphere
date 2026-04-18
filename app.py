@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g, flash
+from flask import Flask, render_template, request, redirect, url_for, session, g, flash, jsonify
 import requests
 import os
 import time
@@ -256,6 +256,12 @@ def _run_migrations():
                 );
             """)
             conn.commit()
+            # ── pgvector schema for AI search ───────────────
+            try:
+                from vector_search import ensure_vector_schema
+                ensure_vector_schema(conn)
+            except Exception as vs_err:
+                print(f"Vector search migration note: {vs_err}")
         else:
             # SQLite: create reviews table if missing
             conn.execute("""
@@ -768,6 +774,16 @@ def create_auction():
         )
         db_commit()
 
+        # Auto-index new auction for vector search
+        if _use_postgres():
+            try:
+                from vector_search import index_auction
+                new_auc = db_execute('SELECT id, title, description FROM auctions ORDER BY id DESC LIMIT 1').fetchone()
+                if new_auc:
+                    index_auction(get_db(), new_auc['id'], new_auc['title'], new_auc['description'])
+            except Exception as e:
+                print(f"Auto-index note: {e}")
+
         flash('Auction created successfully!', 'success')
         return redirect(url_for('index'))
 
@@ -1042,6 +1058,70 @@ def admin_ban_user(user_id):
     action = 'banned' if new_status else 'unbanned'
     flash(f'User "{user["username"]}" has been {action}.', 'success')
     return redirect(url_for('admin_panel'))
+
+
+# ─────────────────────────────────────────────────────────────
+# AI-Powered Vector Search Routes
+# ─────────────────────────────────────────────────────────────
+
+@app.route('/search')
+def search_page():
+    return render_template('search.html')
+
+
+@app.route('/api/search', methods=['POST'])
+def api_search():
+    """Vector similarity search with AI summary."""
+    if not _use_postgres():
+        return jsonify({'error': 'Vector search requires PostgreSQL', 'results': [], 'generated_summary': ''}), 400
+
+    data = request.get_json(silent=True) or {}
+    query = (data.get('query') or '').strip()
+    if not query:
+        return jsonify({'error': 'Query is required', 'results': [], 'generated_summary': ''}), 400
+    if len(query) > 500:
+        query = query[:500]
+
+    try:
+        from vector_search import search_similar, generate_summary
+        conn = get_db()
+        results = search_similar(conn, query, top_k=5)
+
+        # Strip image data from API response to keep payload small
+        for r in results:
+            img = r.get('image', '')
+            if img and len(img) > 500:
+                r['image'] = img  # keep base64 for frontend display
+
+        summary = generate_summary(results, query)
+
+        return jsonify({
+            'results': results,
+            'generated_summary': summary,
+            'query': query
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'results': [], 'generated_summary': ''}), 500
+
+
+@app.route('/api/search/reindex', methods=['POST'])
+def api_reindex():
+    """Re-index all auctions for vector search. Admin only."""
+    if not _use_postgres():
+        return jsonify({'error': 'Requires PostgreSQL'}), 400
+
+    try:
+        from vector_search import ensure_vector_schema, index_all_auctions
+        conn = get_db()
+        ensure_vector_schema(conn)
+        count = index_all_auctions(conn)
+        return jsonify({'indexed': count, 'status': 'ok'})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 # ─────────────────────────────────────────────────────────────

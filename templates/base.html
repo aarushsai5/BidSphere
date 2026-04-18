@@ -39,6 +39,10 @@
             <ul class="nav-links" id="navLinks">
                 <li><a href="{{ url_for('index') }}">Home</a></li>
                 <li><a href="{{ url_for('index') }}#categories">Categories</a></li>
+                <li><a href="{{ url_for('search_page') }}" style="display:inline-flex;align-items:center;gap:4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    AI Search
+                </a></li>
                 {% if current_user %}
                 <li><a href="{{ url_for('dashboard') }}">My Dashboard</a></li>
                 {% if current_user.role in ('seller', 'admin') %}

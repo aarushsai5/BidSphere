@@ -1,0 +1,787 @@
+{% extends "base.html" %}
+{% block title %}AI Search — Art&Auction{% endblock %}
+
+{% block content %}
+<section class="ai-search-hero">
+    <div class="container">
+        <div class="search-hero-content" data-aos="fade-up">
+            <div class="search-hero-badge">
+                <span class="badge-dot"></span>
+                <span>Powered by AI</span>
+            </div>
+            <h1 class="search-hero-title">
+                Smart <span class="gradient-text">Auction Search</span>
+            </h1>
+            <p class="search-hero-subtitle">
+                Search with natural language — our AI finds semantically similar auctions and summarizes the best matches for you.
+            </p>
+
+            <!-- Search Box -->
+            <div class="ai-search-box" id="searchBox">
+                <div class="search-input-wrap">
+                    <svg class="search-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                        type="text"
+                        id="searchInput"
+                        class="search-input"
+                        placeholder="Try: vintage oil painting, antique jewelry, rare coins..."
+                        autocomplete="off"
+                        autofocus
+                    />
+                    <button class="search-btn" id="searchBtn" onclick="performSearch()">
+                        <span class="btn-text">Search</span>
+                        <svg class="btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="search-suggestions">
+                    <span class="suggestion-label">Popular:</span>
+                    <button class="suggestion-chip" onclick="quickSearch('vintage paintings')">🎨 Vintage paintings</button>
+                    <button class="suggestion-chip" onclick="quickSearch('rare collectibles')">💎 Rare collectibles</button>
+                    <button class="suggestion-chip" onclick="quickSearch('antique furniture')">🪑 Antique furniture</button>
+                    <button class="suggestion-chip" onclick="quickSearch('modern art')">🖼️ Modern art</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Animated background elements -->
+    <div class="search-bg-orb search-bg-orb-1"></div>
+    <div class="search-bg-orb search-bg-orb-2"></div>
+    <div class="search-bg-orb search-bg-orb-3"></div>
+</section>
+
+<!-- Results Section -->
+<section class="ai-results-section" id="resultsSection" style="display:none;">
+    <div class="container">
+        <!-- AI Summary Card -->
+        <div class="ai-summary-card" id="summaryCard" data-aos="fade-up">
+            <div class="summary-header">
+                <div class="summary-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <h3>AI Summary</h3>
+                <span class="summary-badge">Generated</span>
+            </div>
+            <p class="summary-text" id="summaryText"></p>
+        </div>
+
+        <!-- Results Header -->
+        <div class="results-header" data-aos="fade-up">
+            <h2 id="resultsTitle">Search Results</h2>
+            <span class="results-count" id="resultsCount"></span>
+        </div>
+
+        <!-- Results Grid -->
+        <div class="ai-results-grid" id="resultsGrid"></div>
+
+        <!-- Index CTA (shown when no results) -->
+        <div class="index-cta" id="indexCta" style="display:none;" data-aos="fade-up">
+            <div class="index-cta-inner">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom: 12px;">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                <h3>No embeddings found</h3>
+                <p>Auction items need to be indexed before AI search works. Click below to index all auctions.</p>
+                <button class="btn btn-primary" onclick="reindexAuctions()" id="reindexBtn">
+                    <span id="reindexBtnText">🔄 Index All Auctions</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Loading Overlay -->
+<div class="search-loading" id="searchLoading" style="display:none;">
+    <div class="container">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p class="loading-text" id="loadingText">Analyzing your query with AI...</p>
+            <div class="loading-steps">
+                <div class="loading-step" id="step1">
+                    <div class="step-dot"></div>
+                    <span>Generating embeddings</span>
+                </div>
+                <div class="loading-step" id="step2">
+                    <div class="step-dot"></div>
+                    <span>Searching vector database</span>
+                </div>
+                <div class="loading-step" id="step3">
+                    <div class="step-dot"></div>
+                    <span>Creating AI summary</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ── AI Search Hero ─────────────────────────────── */
+.ai-search-hero {
+    position: relative;
+    padding: 100px 0 60px;
+    overflow: hidden;
+    min-height: 50vh;
+    display: flex;
+    align-items: center;
+}
+.search-hero-content {
+    text-align: center;
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+.search-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(59,130,246,0.15));
+    color: var(--primary);
+    border: 1px solid rgba(139,92,246,0.2);
+}
+.badge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+}
+.search-hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    margin-bottom: 16px;
+    line-height: 1.2;
+}
+.gradient-text {
+    background: linear-gradient(135deg, #8b5cf6, #3b82f6, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.search-hero-subtitle {
+    font-size: 1.1rem;
+    color: var(--gray-500);
+    margin-bottom: 36px;
+    line-height: 1.6;
+}
+
+/* ── Search Box ────────────────────────────────── */
+.ai-search-box {
+    background: var(--card-bg, #fff);
+    border-radius: 20px;
+    padding: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(139,92,246,0.1);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.ai-search-box:focus-within {
+    box-shadow: 0 12px 50px rgba(139,92,246,0.15), 0 0 0 2px rgba(139,92,246,0.3);
+    transform: translateY(-2px);
+}
+.search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+}
+.search-icon { color: var(--gray-400); flex-shrink: 0; }
+.search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 1.05rem;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    padding: 8px 0;
+}
+.search-input::placeholder { color: var(--gray-400); }
+.search-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+.search-btn:hover { background: linear-gradient(135deg, #7c3aed, #4f46e5); transform: translateY(-1px); }
+.search-btn:active { transform: translateY(0); }
+.search-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.search-suggestions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 8px;
+    flex-wrap: wrap;
+}
+.suggestion-label {
+    font-size: 0.8rem;
+    color: var(--gray-400);
+    font-weight: 500;
+}
+.suggestion-chip {
+    padding: 6px 14px;
+    border-radius: 50px;
+    border: 1px solid var(--gray-200, #e5e7eb);
+    background: transparent;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+}
+.suggestion-chip:hover {
+    background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.1));
+    border-color: rgba(139,92,246,0.3);
+    color: var(--primary);
+}
+
+/* ── Background Orbs ──────────────────────────── */
+.search-bg-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+}
+.search-bg-orb-1 {
+    width: 400px; height: 400px;
+    background: #8b5cf6;
+    top: -100px; right: -100px;
+    animation: float-orb 8s ease-in-out infinite;
+}
+.search-bg-orb-2 {
+    width: 300px; height: 300px;
+    background: #3b82f6;
+    bottom: -80px; left: -80px;
+    animation: float-orb 10s ease-in-out infinite reverse;
+}
+.search-bg-orb-3 {
+    width: 200px; height: 200px;
+    background: #06b6d4;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    animation: float-orb 12s ease-in-out infinite;
+}
+@keyframes float-orb {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(30px, -20px); }
+    66% { transform: translate(-20px, 30px); }
+}
+
+/* ── AI Summary Card ───────────────────────────── */
+.ai-summary-card {
+    background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.06));
+    border: 1px solid rgba(139,92,246,0.15);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 32px;
+}
+.summary-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.summary-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+.summary-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    margin: 0;
+}
+.summary-badge {
+    font-size: 0.7rem;
+    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.summary-text {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Results ────────────────────────────────────── */
+.ai-results-section { padding: 40px 0 80px; }
+.results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+.results-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    margin: 0;
+}
+.results-count {
+    background: var(--gray-100, #f3f4f6);
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gray-500);
+}
+.ai-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+/* ── Result Card ───────────────────────────────── */
+.result-card {
+    background: var(--card-bg, #fff);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    transition: all 0.3s ease;
+    border: 1px solid var(--gray-100, #f3f4f6);
+    animation: card-enter 0.5s ease forwards;
+    opacity: 0;
+    transform: translateY(20px);
+}
+.result-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(139,92,246,0.12);
+    border-color: rgba(139,92,246,0.2);
+}
+@keyframes card-enter {
+    to { opacity: 1; transform: translateY(0); }
+}
+.result-card-img {
+    height: 200px;
+    overflow: hidden;
+    background: var(--gray-100, #f3f4f6);
+    position: relative;
+}
+.result-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+.result-card:hover .result-card-img img { transform: scale(1.05); }
+.result-card-img .no-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--gray-400);
+    font-size: 3rem;
+}
+.similarity-badge {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+.status-dot.live { background: #22c55e; }
+.status-dot.upcoming { background: #f59e0b; }
+.status-dot.closed { background: #ef4444; }
+.result-card-body { padding: 20px; }
+.result-card-body h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin: 0 0 8px;
+    line-height: 1.3;
+}
+.result-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.result-meta span {
+    font-size: 0.82rem;
+    color: var(--gray-500);
+}
+.result-price {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+.result-desc {
+    font-size: 0.88rem;
+    color: var(--gray-500);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.result-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.result-view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.result-view-btn:hover {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    transform: translateY(-1px);
+}
+
+/* ── Loading ────────────────────────────────────── */
+.search-loading {
+    padding: 60px 0;
+}
+.loading-card {
+    max-width: 480px;
+    margin: 0 auto;
+    text-align: center;
+    background: var(--card-bg, #fff);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+}
+.loading-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--gray-200, #e5e7eb);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin-bottom: 24px;
+}
+.loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+}
+.loading-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--gray-400);
+    transition: color 0.3s ease;
+}
+.loading-step.active { color: var(--primary); font-weight: 600; }
+.loading-step.done { color: #22c55e; }
+.step-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gray-200, #e5e7eb);
+    transition: background 0.3s ease;
+    flex-shrink: 0;
+}
+.loading-step.active .step-dot { background: #8b5cf6; animation: pulse-dot 1s ease-in-out infinite; }
+.loading-step.done .step-dot { background: #22c55e; }
+
+/* ── Index CTA ─────────────────────────────────── */
+.index-cta {
+    text-align: center;
+    padding: 40px 0;
+}
+.index-cta-inner {
+    max-width: 400px;
+    margin: 0 auto;
+    background: var(--card-bg, #fff);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.06);
+    border: 1px solid var(--gray-100, #f3f4f6);
+}
+.index-cta-inner h3 { margin-bottom: 8px; font-family: 'Playfair Display', serif; }
+.index-cta-inner p { color: var(--gray-500); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; }
+
+/* ── Dark mode fixes ───────────────────────────── */
+[data-theme="dark"] .ai-search-box {
+    background: var(--card-bg);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(139,92,246,0.15);
+}
+[data-theme="dark"] .result-card {
+    border-color: rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .result-card:hover {
+    border-color: rgba(139,92,246,0.3);
+}
+[data-theme="dark"] .search-bg-orb { opacity: 0.08; }
+[data-theme="dark"] .loading-card {
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .index-cta-inner {
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    border-color: rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .suggestion-chip {
+    border-color: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] .results-count {
+    background: rgba(255,255,255,0.06);
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 640px) {
+    .ai-search-hero { padding: 80px 0 40px; }
+    .search-input-wrap { flex-direction: column; gap: 8px; }
+    .search-btn { width: 100%; justify-content: center; }
+    .search-suggestions { justify-content: center; }
+    .ai-results-grid { grid-template-columns: 1fr; }
+    .results-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const API_SEARCH = '/api/search';
+const API_REINDEX = '/api/search/reindex';
+
+// ── Search ──────────────────────────────────────
+
+function performSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+
+    showLoading();
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Animate loading steps
+    setTimeout(() => activateStep('step1'), 300);
+    setTimeout(() => { doneStep('step1'); activateStep('step2'); }, 1500);
+    setTimeout(() => { doneStep('step2'); activateStep('step3'); }, 2500);
+
+    fetch(API_SEARCH, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+    })
+    .then(r => r.json())
+    .then(data => {
+        hideLoading();
+        renderResults(data, query);
+    })
+    .catch(err => {
+        hideLoading();
+        console.error('Search error:', err);
+        alert('Search failed. Please try again.');
+    });
+}
+
+function quickSearch(text) {
+    document.getElementById('searchInput').value = text;
+    performSearch();
+}
+
+// Enter key triggers search
+document.getElementById('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') performSearch();
+});
+
+// ── Loading ─────────────────────────────────────
+
+function showLoading() {
+    document.getElementById('searchLoading').style.display = 'block';
+    document.getElementById('searchBtn').disabled = true;
+    // Reset steps
+    ['step1','step2','step3'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('active','done');
+    });
+}
+function hideLoading() {
+    document.getElementById('searchLoading').style.display = 'none';
+    document.getElementById('searchBtn').disabled = false;
+}
+function activateStep(id) { document.getElementById(id).classList.add('active'); }
+function doneStep(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('active');
+    el.classList.add('done');
+}
+
+// ── Render Results ──────────────────────────────
+
+function renderResults(data, query) {
+    const section = document.getElementById('resultsSection');
+    const grid = document.getElementById('resultsGrid');
+    const summaryText = document.getElementById('summaryText');
+    const summaryCard = document.getElementById('summaryCard');
+    const resultsTitle = document.getElementById('resultsTitle');
+    const resultsCount = document.getElementById('resultsCount');
+    const indexCta = document.getElementById('indexCta');
+
+    section.style.display = 'block';
+
+    // AI Summary with typewriter effect
+    if (data.generated_summary) {
+        summaryCard.style.display = 'block';
+        typewriterEffect(summaryText, data.generated_summary, 15);
+    } else {
+        summaryCard.style.display = 'none';
+    }
+
+    // Results
+    const results = data.results || [];
+    if (results.length === 0) {
+        grid.innerHTML = '';
+        resultsTitle.textContent = 'No Results Found';
+        resultsCount.textContent = '';
+        indexCta.style.display = 'block';
+        return;
+    }
+
+    indexCta.style.display = 'none';
+    resultsTitle.textContent = `Results for "${query}"`;
+    resultsCount.textContent = `${results.length} match${results.length > 1 ? 'es' : ''}`;
+
+    grid.innerHTML = results.map((r, i) => {
+        const img = r.image
+            ? `<img src="${escapeHtml(r.image)}" alt="${escapeHtml(r.title)}" loading="lazy"/>`
+            : `<div class="no-image">🖼️</div>`;
+
+        const desc = (r.description || '').replace(/\*\*[^*]+\*\*/g, '').trim().substring(0, 120);
+        const price = r.current_price ? `₹${Number(r.current_price).toLocaleString('en-IN')}` : `₹${Number(r.starting_price).toLocaleString('en-IN')}`;
+        const status = r.status || 'live';
+        const bids = r.bid_count || 0;
+
+        return `
+        <div class="result-card" style="animation-delay: ${i * 0.1}s">
+            <div class="result-card-img">
+                ${img}
+                <div class="similarity-badge">${r.similarity}% match</div>
+            </div>
+            <div class="result-card-body">
+                <h3>${escapeHtml(r.title)}</h3>
+                <div class="result-meta">
+                    <span><span class="status-dot ${status}"></span>${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+                    <span>👤 ${escapeHtml(r.seller_name)}</span>
+                    <span>🔨 ${bids} bid${bids !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="result-price">${price}</div>
+                <div class="result-desc">${escapeHtml(desc)}</div>
+                <div class="result-card-footer">
+                    <a href="/auction/${r.id}" class="result-view-btn">
+                        View Auction
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    // Scroll to results
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Typewriter Effect ───────────────────────────
+
+function typewriterEffect(el, text, speed) {
+    el.textContent = '';
+    let i = 0;
+    function type() {
+        if (i < text.length) {
+            el.textContent += text.charAt(i);
+            i++;
+            setTimeout(type, speed);
+        }
+    }
+    type();
+}
+
+// ── Reindex ─────────────────────────────────────
+
+function reindexAuctions() {
+    const btn = document.getElementById('reindexBtn');
+    const btnText = document.getElementById('reindexBtnText');
+    btn.disabled = true;
+    btnText.textContent = '⏳ Indexing... (this may take a minute)';
+
+    fetch(API_REINDEX, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.error) {
+            btnText.textContent = '❌ Error: ' + data.error;
+        } else {
+            btnText.textContent = `✅ Indexed ${data.indexed} auctions!`;
+            // Auto-retry search
+            setTimeout(() => {
+                btnText.textContent = '🔄 Index All Auctions';
+                performSearch();
+            }, 2000);
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btnText.textContent = '❌ Failed — check console';
+        console.error(err);
+    });
+}
+
+// ── Helpers ─────────────────────────────────────
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

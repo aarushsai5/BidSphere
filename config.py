@@ -10,3 +10,4 @@ class Config:
     UPLOAD_FOLDER = os.path.join(basedir, 'static', 'images')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max
     TEMPLATES_AUTO_RELOAD = True
+    HF_API_TOKEN = os.environ.get('HF_API_TOKEN', '')
